@@ -25,10 +25,10 @@
   "license": "MIT",
   "author": "Jagdeep Sidhu",
   "files": [
-    "index.js",
-    "utils.js"
+    "/lib"
   ],
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/syscoin/syscoinjs-lib.git"
@@ -38,7 +38,8 @@
     "standard": "standard",
     "test": "npm run standard && npm run unit",
     "unit": "tape test/*.js",
-    "browserify": "browserify index.js -s syscoinjs -o syscoinjs-lib.browser.js"
+    "browserify": "browserify index.js -s syscoinjs -o syscoinjs-lib.browser.js",
+    "build:lib": "tsc -p tsconfig.json"
   },
   "devDependencies": {
     "browserify": "^17.0.0",
@@ -59,6 +60,7 @@
     "node-localstorage": "^2.1.6",
     "syscointx-js": "^1.0.102",
     "trezor-connect": "^8.1.29",
+    "typescript": "^4.7.3",
     "varuint-bitcoin": "^1.1.2",
     "web3": "^1.4.0"
   }
