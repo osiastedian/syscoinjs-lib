@@ -1,1 +1,1 @@
-{"version":3,"file":"asset-information.js","sourceRoot":"","sources":["../../src/types/asset-information.ts"],"names":[],"mappings":";;;AA+BA,IAAY,QAGX;AAHD,WAAY,QAAQ;IAClB,wBAAY,CAAA;IACZ,wGAA4F,CAAA;AAC9F,CAAC,EAHW,QAAQ,GAAR,gBAAQ,KAAR,gBAAQ,QAGnB"}
+{"version":3,"file":"asset-information.js","sourceRoot":"","sources":["../../src/types/asset-information.ts"],"names":[],"mappings":"AA+BA,MAAM,CAAN,IAAY,QAGX;AAHD,WAAY,QAAQ;IAClB,wBAAY,CAAA;IACZ,wGAA4F,CAAA;AAC9F,CAAC,EAHW,QAAQ,KAAR,QAAQ,QAGnB"}

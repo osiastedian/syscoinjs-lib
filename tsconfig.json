@@ -3,9 +3,10 @@
     "outDir": "./lib",
     "sourceMap": true,
     "allowJs": true,
-    "target": "es5",
+    "target": "es6",
     "esModuleInterop": true,
-    "declaration": true
+    "declaration": true,
+    "moduleResolution": "node"
   },
   "include": ["./src/**/*"]
 }
