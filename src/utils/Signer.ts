@@ -1,12 +1,11 @@
-import { Network } from "../types/network";
 import { PubTypes } from "../types/pubtype";
-import { bitcoinZPubTypes, syscoinNetworks, syscoinZPubTypes } from "../utils";
+import { bitcoinZPubTypes, syscoinNetworks, syscoinZPubTypes } from ".";
 import { fromZPrv, fromZPub } from "bip84";
 import { XPUBToken } from "../types/xpub-token";
 import fetchBackendAccount from "./functions/fetchBackendAccount";
-import bjs from "bitcoinjs-lib";
+import bjs, { Network } from "bitcoinjs-lib";
+import { Networks } from "../types/network";
 
-export type Networks = { mainnet: Network; testnet: Network };
 export type Account = fromZPrv | fromZPub;
 
 export class Signer {

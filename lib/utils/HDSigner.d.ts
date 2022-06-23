@@ -1,8 +1,9 @@
 /// <reference types="node" />
 import { PubTypes } from "../types/pubtype";
-import Signer, { Networks } from "./Signer";
+import Signer from "./Signer";
 import { fromMnemonic } from "bip84";
 import { BIP32Interface, Psbt } from "bitcoinjs-lib";
+import { Networks } from "../types/network";
 export declare class HDSigner extends Signer {
     mnemonic: string;
     fromMnemonic: fromMnemonic;

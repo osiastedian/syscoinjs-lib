@@ -1,11 +1,11 @@
 import { PubTypes } from "../types/pubtype";
-import Signer, { Networks } from "./Signer";
+import Signer from "./Signer";
 import { fromMnemonic, fromZPrv } from "bip84";
 import CryptoJS from "crypto-js";
-import { bitcoinZPubTypes, syscoinZPubTypes } from "../utils";
+import { bitcoinZPubTypes, syscoinZPubTypes } from ".";
 import { BIP32Interface, Psbt } from "bitcoinjs-lib";
 import bjs from "bitcoinjs-lib";
-import { XPUBToken } from "../types/xpub-token";
+import { Networks } from "../types/network";
 
 export class HDSigner extends Signer {
   mnemonic: string;

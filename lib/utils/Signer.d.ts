@@ -1,12 +1,9 @@
 /// <reference types="node" />
-import { Network } from "../types/network";
 import { PubTypes } from "../types/pubtype";
 import { fromZPrv, fromZPub } from "bip84";
 import { XPUBToken } from "../types/xpub-token";
-export declare type Networks = {
-    mainnet: Network;
-    testnet: Network;
-};
+import { Network } from "bitcoinjs-lib";
+import { Networks } from "../types/network";
 export declare type Account = fromZPrv | fromZPub;
 export declare class Signer {
     password: string;
