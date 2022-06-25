@@ -1,11 +1,11 @@
-import { PubTypes } from "../types/pubtype";
-import Signer from "./Signer";
-import { fromMnemonic, fromZPrv } from "bip84";
-import CryptoJS from "crypto-js";
-import { bitcoinZPubTypes, syscoinZPubTypes } from ".";
-import { BIP32Interface, Psbt } from "bitcoinjs-lib";
-import bjs from "bitcoinjs-lib";
-import { Networks } from "../types/network";
+import { PubTypes } from '../types/pubtype';
+import Signer from './Signer';
+import { fromMnemonic, fromZPrv } from 'bip84';
+import CryptoJS from 'crypto-js';
+import { bitcoinZPubTypes, syscoinZPubTypes } from './constants';
+import { BIP32Interface, Psbt } from 'bitcoinjs-lib';
+import bjs from 'bitcoinjs-lib';
+import { Networks } from '../types/network';
 
 export class HDSigner extends Signer {
   mnemonic: string;
@@ -50,7 +50,7 @@ export class HDSigner extends Signer {
         pathIn ||
         (dataInput.unknownKeyVals &&
           dataInput.unknownKeyVals.length > 1 &&
-          dataInput.unknownKeyVals[1].key.equals(Buffer.from("path")) &&
+          dataInput.unknownKeyVals[1].key.equals(Buffer.from('path')) &&
           (!dataInput.bip32Derivation ||
             dataInput.bip32Derivation.length === 0))
       ) {
@@ -109,14 +109,14 @@ export class HDSigner extends Signer {
 
   restore(password: string): boolean {
     let browserStorage =
-      typeof localStorage === "undefined" || localStorage === null
+      typeof localStorage === 'undefined' || localStorage === null
         ? null
         : localStorage;
     if (!browserStorage) {
-      const LocalStorage = require("node-localstorage").LocalStorage;
-      browserStorage = new LocalStorage("./scratch");
+      const LocalStorage = require('node-localstorage').LocalStorage;
+      browserStorage = new LocalStorage('./scratch');
     }
-    const key = this.network.bech32 + "_hdsigner";
+    const key = this.network.bech32 + '_hdsigner';
     const ciphertext = browserStorage.getItem(key);
     if (ciphertext === null) {
       return false;
@@ -146,17 +146,17 @@ export class HDSigner extends Signer {
 
   backup(): void {
     let browserStorage =
-      typeof localStorage === "undefined" || localStorage === null
+      typeof localStorage === 'undefined' || localStorage === null
         ? null
         : localStorage;
     if (!this.password) {
       return;
     }
     if (!browserStorage) {
-      const LocalStorage = require("node-localstorage").LocalStorage;
-      browserStorage = new LocalStorage("./scratch");
+      const LocalStorage = require('node-localstorage').LocalStorage;
+      browserStorage = new LocalStorage('./scratch');
     }
-    const key = this.network.bech32 + "_hdsigner";
+    const key = this.network.bech32 + '_hdsigner';
     const obj = {
       mnemonic: this.mnemonic,
       numAccounts: this.accounts.length,
