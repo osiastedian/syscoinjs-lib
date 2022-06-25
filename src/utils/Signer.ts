@@ -1,10 +1,14 @@
-import { PubTypes } from "../types/pubtype";
-import { bitcoinZPubTypes, syscoinNetworks, syscoinZPubTypes } from ".";
-import { fromZPrv, fromZPub } from "bip84";
-import { XPUBToken } from "../types/xpub-token";
-import fetchBackendAccount from "./functions/fetchBackendAccount";
-import bjs, { Network } from "bitcoinjs-lib";
-import { Networks } from "../types/network";
+import { PubTypes } from '../types/pubtype';
+import {
+  bitcoinZPubTypes,
+  syscoinNetworks,
+  syscoinZPubTypes,
+} from './constants';
+import { fromZPrv, fromZPub } from 'bip84';
+import { XPUBToken } from '../types/xpub-token';
+import fetchBackendAccount from './functions/fetchBackendAccount';
+import bjs, { Network } from 'bitcoinjs-lib';
+import { Networks } from '../types/network';
 
 export type Account = fromZPrv | fromZPub;
 
@@ -47,7 +51,7 @@ export class Signer {
   setAccountIndex(index: number): void {
     if (index > this.accounts.length) {
       console.log(
-        "Account does not exist, use createAccount to create it first..."
+        'Account does not exist, use createAccount to create it first...'
       );
       return;
     }
@@ -69,7 +73,7 @@ export class Signer {
       let res = await fetchBackendAccount(
         this.blockbookURL,
         this.getAccountXpub(),
-        "tokens=used&details=tokens",
+        'tokens=used&details=tokens',
         true,
         this
       );
@@ -78,12 +82,12 @@ export class Signer {
         res = await fetchBackendAccount(
           this.blockbookURL,
           this.getAccountXpub(),
-          "tokens=used&details=tokens",
+          'tokens=used&details=tokens',
           true,
           this
         );
         if (res === null) {
-          throw new Error("Could not update XPUB change index");
+          throw new Error('Could not update XPUB change index');
         }
       }
     }
@@ -107,7 +111,7 @@ export class Signer {
       let res = await fetchBackendAccount(
         this.blockbookURL,
         this.getAccountXpub(),
-        "tokens=used&details=tokens",
+        'tokens=used&details=tokens',
         true,
         this
       );
@@ -116,12 +120,12 @@ export class Signer {
         res = await fetchBackendAccount(
           this.blockbookURL,
           this.getAccountXpub(),
-          "tokens=used&details=tokens",
+          'tokens=used&details=tokens',
           true,
           this
         );
         if (res === null) {
-          throw new Error("Could not update XPUB receiving index");
+          throw new Error('Could not update XPUB receiving index');
         }
       }
     }
@@ -159,11 +163,11 @@ export class Signer {
           return;
         }
         const transfers =
-          typeof token.transfers === "string"
+          typeof token.transfers === 'string'
             ? parseInt(token.transfers, 10)
             : token.transfers;
         if (token.path && transfers > 0) {
-          const splitPath = token.path.split("/");
+          const splitPath = token.path.split('/');
           if (splitPath.length >= 6) {
             const change = parseInt(splitPath[4], 10);
             const index = parseInt(splitPath[5], 10);
@@ -201,7 +205,7 @@ export class Signer {
    * @param isChange Optional. HD Path change parker
    */
   getHDPath(addressIndex?: number, isChange?: boolean): string {
-    const changeNum = isChange ? "1" : "0";
+    const changeNum = isChange ? '1' : '0';
     let bipNum = 44;
     if (
       this.pubTypes === syscoinZPubTypes ||
