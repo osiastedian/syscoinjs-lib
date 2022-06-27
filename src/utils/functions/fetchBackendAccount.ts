@@ -1,5 +1,5 @@
-import axios from "axios";
-import Signer from "../Signer";
+import axios from 'axios'
+import Signer from '../Signer'
 /**
  * Fetch address or XPUB information including transactions and balance information (based on options) from backend Blockbook provider
  * @param backendURL: Required. Fully qualified URL for blockbook
@@ -17,33 +17,33 @@ export async function fetchBackendAccount(
   mySignerObj?: Signer
 ) {
   try {
-    let blockbookURL = backendURL.slice();
+    let blockbookURL = backendURL.slice()
     if (blockbookURL) {
-      blockbookURL = blockbookURL.replace(/\/$/, "");
+      blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    let url = blockbookURL;
+    let url = blockbookURL
     if (xpub) {
-      url += "/api/v2/xpub/";
+      url += '/api/v2/xpub/'
     } else {
-      url += "/api/v2/address/";
+      url += '/api/v2/address/'
     }
-    url += addressOrXpub;
+    url += addressOrXpub
     if (options) {
-      url += "?" + options;
+      url += `?${options}`
     }
-    const request = await axios.get(url);
+    const request = await axios.get(url)
     if (request && request.data) {
       // if fetching xpub data
       if (xpub && request.data.tokens && mySignerObj) {
-        mySignerObj.setLatestIndexesFromXPubTokens(request.data.tokens);
+        mySignerObj.setLatestIndexesFromXPubTokens(request.data.tokens)
       }
-      return request.data;
+      return request.data
     }
-    return null;
+    return null
   } catch (e) {
-    console.log("Exception: " + e.message);
-    return null;
+    console.log(`Exception: ${e.message}`)
+    return null
   }
 }
 
-export default fetchBackendAccount;
+export default fetchBackendAccount

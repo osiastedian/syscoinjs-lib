@@ -1,32 +1,22 @@
+import BIP84 from 'bip84'
+import bjs, { BIP32Interface, Network, Psbt } from 'bitcoinjs-lib'
+import CryptoJS from 'crypto-js'
+import TrezorConnect, { AccountInfo, SignTransaction } from 'trezor-connect'
+import utxoLib from '@trezor/utxo-lib'
+import bitcoinops from 'bitcoin-ops/map'
+import { PubTypes } from '../types/pubtype'
+import { Networks } from '../types/network'
+import { Signer } from '.'
 import {
   bitcoinZPubTypes,
   DEFAULT_TREZOR_DOMAIN,
   syscoinSLIP44,
   syscoinZPubTypes,
-} from './constants';
-import { Signer } from '.';
-import { Networks } from '../types/network';
-import { PubTypes } from '../types/pubtype';
-import BIP84 from 'bip84';
-import bjs, {
-  BIP32Interface,
-  Network,
-  Payment,
-  PaymentOpts,
-} from 'bitcoinjs-lib';
-import CryptoJS from 'crypto-js';
-import { Psbt } from 'bitcoinjs-lib';
-import TrezorConnect, { AccountInfo, SignTransaction } from 'trezor-connect';
-import utxoLib from '@trezor/utxo-lib';
-import bitcoinops from 'bitcoin-ops/map';
-import {
-  TrezorTx,
-  TrezorTxInput,
-  TrezorTxOutput,
-} from '../types/trezor-format';
+} from './constants'
+import { TrezorTx, TrezorTxInput, TrezorTxOutput } from '../types/trezor-format'
 
 export class TrezorSigner extends Signer {
-  trezorInitialized = false;
+  trezorInitialized = false
 
   constructor(
     password: string,
@@ -34,31 +24,30 @@ export class TrezorSigner extends Signer {
     networks: Networks,
     slip44: number,
     pubTypes: PubTypes,
-    connectSrc: string,
-    disableLazyLoad: boolean
+    connectSrc = DEFAULT_TREZOR_DOMAIN,
+    disableLazyLoad = false
   ) {
-    super(password, isTestnet, networks, slip44, pubTypes);
+    super(password, isTestnet, networks, slip44, pubTypes)
     try {
       if (!this.trezorInitialized) {
-        connectSrc = connectSrc || DEFAULT_TREZOR_DOMAIN;
-        const lazyLoad = !disableLazyLoad;
+        const lazyLoad = !disableLazyLoad
         TrezorConnect.init({
-          connectSrc: connectSrc,
-          lazyLoad: lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
+          connectSrc,
+          lazyLoad, // this param will prevent iframe injection until TrezorConnect.method will be called
           manifest: {
             email: 'jsidhu@blockchainfoundry.co',
             appUrl: 'https://syscoin.org/',
           },
-        });
-        this.trezorInitialized = true; // Trezor should be initialized on first run only
+        })
+        this.trezorInitialized = true // Trezor should be initialized on first run only
       }
     } catch (e) {
       throw new Error(
-        'TrezorSigner should be called only from browser context: ' + e
-      );
+        `TrezorSigner should be called only from browser context: ${e}`
+      )
     }
 
-    this.restore(this.password);
+    this.restore(this.password)
   }
 
   /**
@@ -68,25 +57,25 @@ export class TrezorSigner extends Signer {
    * @returns trezor transaction format
    */
   convertToTrezorFormat(psbt: Psbt, pathIn?: string): TrezorTx {
-    const coin = this.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc';
+    const coin = this.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
     const trezortx: TrezorTx = {
       coin,
       version: psbt.version,
       inputs: [],
       outputs: [],
-    };
+    }
 
     for (let i = 0; i < psbt.txInputs.length; i++) {
-      const scriptTypes = psbt.getInputType(i);
-      const input = psbt.txInputs[i];
+      const scriptTypes = psbt.getInputType(i)
+      const input = psbt.txInputs[i]
       const inputItem: TrezorTxInput = {
         prev_index: input.index,
         prev_hash: input.hash.reverse().toString('hex'),
-      };
+      }
 
-      if (input.sequence) inputItem.sequence = input.sequence;
-      const dataInput = psbt.data.inputs[i];
-      let path = '';
+      if (input.sequence) inputItem.sequence = input.sequence
+      const dataInput = psbt.data.inputs[i]
+      let path = ''
       if (
         pathIn ||
         (dataInput.unknownKeyVals &&
@@ -95,37 +84,37 @@ export class TrezorSigner extends Signer {
           (!dataInput.bip32Derivation ||
             dataInput.bip32Derivation.length === 0))
       ) {
-        path = pathIn || dataInput.unknownKeyVals[1].value.toString();
-        inputItem.address_n = this.convertToAddressNFormat(path);
+        path = pathIn || dataInput.unknownKeyVals[1].value.toString()
+        inputItem.address_n = this.convertToAddressNFormat(path)
       }
 
       switch (scriptTypes) {
         case 'multisig':
-          inputItem.script_type = 'SPENDMULTISIG';
-          break;
+          inputItem.script_type = 'SPENDMULTISIG'
+          break
         case 'witnesspubkeyhash':
-          inputItem.script_type = 'SPENDWITNESS';
-          break;
+          inputItem.script_type = 'SPENDWITNESS'
+          break
         default:
           inputItem.script_type = this.isP2WSHScript(
             psbt.data.inputs[i].witnessUtxo.script
           )
             ? 'SPENDP2SHWITNESS'
-            : 'SPENDADDRESS';
-          break;
+            : 'SPENDADDRESS'
+          break
       }
-      trezortx.inputs.push(inputItem);
+      trezortx.inputs.push(inputItem)
     }
 
     for (let i = 0; i < psbt.txOutputs.length; i++) {
-      const output = psbt.txOutputs[i];
-      const chunks = bjs.script.decompile(output.script);
+      const output = psbt.txOutputs[i]
+      const chunks = bjs.script.decompile(output.script)
       const outputItem: TrezorTxOutput = {
         amount: output.value.toString(),
-      };
+      }
       if (chunks[0] === bitcoinops.OP_RETURN) {
-        outputItem.script_type = 'PAYTOOPRETURN';
-        outputItem.op_return_data = (chunks[1] as Buffer).toString('hex');
+        outputItem.script_type = 'PAYTOOPRETURN'
+        outputItem.op_return_data = (chunks[1] as Buffer).toString('hex')
       } else {
         if (this.isBech32(output.address)) {
           if (
@@ -133,9 +122,9 @@ export class TrezorSigner extends Signer {
             output.script[0] === 0 &&
             output.script[1] === 0x20
           ) {
-            outputItem.script_type = 'PAYTOP2SHWITNESS';
+            outputItem.script_type = 'PAYTOP2SHWITNESS'
           } else {
-            outputItem.script_type = 'PAYTOWITNESS';
+            outputItem.script_type = 'PAYTOWITNESS'
           }
         } else {
           outputItem.script_type = this.isScriptHash(
@@ -143,13 +132,13 @@ export class TrezorSigner extends Signer {
             this.network
           )
             ? 'PAYTOSCRIPTHASH'
-            : 'PAYTOADDRESS';
+            : 'PAYTOADDRESS'
         }
-        outputItem.address = output.address;
+        outputItem.address = output.address
       }
-      trezortx.outputs.push(outputItem);
+      trezortx.outputs.push(outputItem)
     }
-    return trezortx;
+    return trezortx
   }
 
   /**
@@ -164,39 +153,38 @@ export class TrezorSigner extends Signer {
       psbt.txOutputs.length <= 0 ||
       psbt.version === undefined
     ) {
-      throw new Error('PSBT object is lacking information');
+      throw new Error('PSBT object is lacking information')
     }
-    const trezorTx = this.convertToTrezorFormat(psbt, pathIn);
+    const trezorTx = this.convertToTrezorFormat(psbt, pathIn)
     const response = await TrezorConnect.signTransaction(
       trezorTx as SignTransaction
-    );
+    )
     if (response.success === true) {
-      const tx = bjs.Transaction.fromHex(response.payload.serializedTx);
-      for (const i of this.range(psbt.data.inputs.length)) {
+      const tx = bjs.Transaction.fromHex(response.payload.serializedTx)
+      this.range(psbt.data.inputs.length).forEach((i) => {
         if (tx.ins[i].witness === (undefined || null)) {
           throw new Error(
             'Please move your funds to a Segwit address: https://wiki.trezor.io/Account'
-          );
+          )
         }
         const partialSig = [
           {
             pubkey: tx.ins[i].witness[1],
             signature: tx.ins[i].witness[0],
           },
-        ];
-        psbt.updateInput(i, { partialSig });
-      }
+        ]
+        psbt.updateInput(i, { partialSig })
+      })
       try {
         if (psbt.validateSignaturesOfAllInputs()) {
-          psbt.finalizeAllInputs();
+          psbt.finalizeAllInputs()
         }
       } catch (err) {
-        console.log(err);
+        console.log(err)
       }
-      return psbt;
-    } else {
-      throw new Error('Trezor sign failed: ' + response.payload.error);
+      return psbt
     }
+    throw new Error(`Trezor sign failed: ${response.payload.error}`)
   }
 
   /**
@@ -205,35 +193,35 @@ export class TrezorSigner extends Signer {
    * @returns bip32 node for derived account
    */
   async deriveAccount(index: number): Promise<AccountInfo> {
-    let bipNum = 44;
+    let bipNum = 44
     if (
       this.pubTypes === syscoinZPubTypes ||
       this.pubTypes === bitcoinZPubTypes
     ) {
-      bipNum = 84;
+      bipNum = 84
     }
-    const coin = this.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc';
-    const keypath = 'm/' + bipNum + "'/" + this.SLIP44 + "'/" + index + "'";
+    const coin = this.SLIP44 === syscoinSLIP44 ? 'sys' : 'btc'
+    const keypath = `m/${bipNum}'/${this.SLIP44}'/${index}'`
     if (this.isTestnet) {
-      throw new Error('Cant use TrezorSigner on testnet .');
+      throw new Error('Cant use TrezorSigner on testnet .')
     }
 
     return new Promise((resolve, reject) => {
       TrezorConnect.getAccountInfo({
         path: keypath,
-        coin: coin,
+        coin,
       })
         .then((response) => {
           if (response.success) {
-            resolve(response.payload);
+            resolve(response.payload)
           }
-          reject((response.payload as { error: string; code?: string }).error);
+          reject((response.payload as { error: string; code?: string }).error)
         })
         .catch((error) => {
-          console.error('TrezorConnectError', error);
-          reject(error);
-        });
-    });
+          console.error('TrezorConnectError', error)
+          reject(error)
+        })
+    })
   }
 
   /**
@@ -245,30 +233,30 @@ export class TrezorSigner extends Signer {
     let browserStorage =
       typeof localStorage === 'undefined' || localStorage === null
         ? null
-        : localStorage;
+        : localStorage
     if (!browserStorage) {
-      const LocalStorage = require('node-localstorage').LocalStorage;
-      browserStorage = new LocalStorage('./scratch');
+      const { LocalStorage } = require('node-localstorage')
+      browserStorage = new LocalStorage('./scratch')
     }
-    const key = this.network.bech32 + '_trezorsigner';
-    const ciphertext = browserStorage.getItem(key);
+    const key = `${this.network.bech32}_trezorsigner`
+    const ciphertext = browserStorage.getItem(key)
     if (ciphertext === null) {
-      return false;
+      return false
     }
-    const bytes = CryptoJS.AES.decrypt(ciphertext, password);
+    const bytes = CryptoJS.AES.decrypt(ciphertext, password)
     if (!bytes || bytes.length === 0) {
-      return false;
+      return false
     }
-    const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-    const numAccounts = decryptedData.numAccounts;
+    const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
+    const { numAccounts } = decryptedData
     // sanity checks
     if (this.accountIndex > 1000) {
-      return false;
+      return false
     }
 
-    this.changeIndex = -1;
-    this.receivingIndex = -1;
-    this.accountIndex = 0;
+    this.changeIndex = -1
+    this.receivingIndex = -1
+    this.accountIndex = 0
     for (let i = 0; i < numAccounts; i++) {
       this.accounts.push(
         new BIP84.fromZPub(
@@ -276,14 +264,14 @@ export class TrezorSigner extends Signer {
           this.pubTypes,
           this.networks
         )
-      );
+      )
       if (this.accounts[i].getAccountPublicKey() !== decryptedData.xpubArr[i]) {
         throw new Error(
           'Account public key mismatch,check pubtypes and networks being used'
-        );
+        )
       }
     }
-    return true;
+    return true
   }
 
   /**
@@ -293,25 +281,25 @@ export class TrezorSigner extends Signer {
     let browserStorage =
       typeof localStorage === 'undefined' || localStorage === null
         ? null
-        : localStorage;
+        : localStorage
     if (!this.password) {
-      return;
+      return
     }
     if (!browserStorage) {
-      const LocalStorage = require('node-localstorage').LocalStorage;
-      browserStorage = new LocalStorage('./scratch');
+      const { LocalStorage } = require('node-localstorage')
+      browserStorage = new LocalStorage('./scratch')
     }
-    const key = this.network.bech32 + '_trezorsigner';
-    const xpubs = [];
+    const key = `${this.network.bech32}_trezorsigner`
+    const xpubs = []
     for (let i = 0; i < this.accounts.length; i++) {
-      xpubs[i] = this.accounts[i].getAccountPublicKey();
+      xpubs[i] = this.accounts[i].getAccountPublicKey()
     }
-    const obj = { xpubArr: xpubs, numAccounts: this.accounts.length };
+    const obj = { xpubArr: xpubs, numAccounts: this.accounts.length }
     const ciphertext = CryptoJS.AES.encrypt(
       JSON.stringify(obj),
       this.password
-    ).toString();
-    browserStorage.setItem(key, ciphertext);
+    ).toString()
+    browserStorage.setItem(key, ciphertext)
   }
 
   /**
@@ -319,53 +307,53 @@ export class TrezorSigner extends Signer {
    * @returns Account index of new account
    */
   async createAccount(): Promise<number> {
-    this.changeIndex = -1;
-    this.receivingIndex = -1;
+    this.changeIndex = -1
+    this.receivingIndex = -1
     return new Promise((resolve, reject) => {
       this.deriveAccount(this.accounts.length)
         .then((child) => {
-          this.accountIndex = this.accounts.length;
+          this.accountIndex = this.accounts.length
           this.accounts.push(
             new BIP84.fromZPub(child.descriptor, this.pubTypes, this.networks)
-          );
-          this.backup();
-          resolve(this.accountIndex);
+          )
+          this.backup()
+          resolve(this.accountIndex)
         })
         .catch((err) => {
-          console.error(err);
-          reject(err);
-        });
-    });
+          console.error(err)
+          reject(err)
+        })
+    })
   }
 
   getAccountNode(): BIP32Interface {
     return bjs.bip32.fromBase58(
       this.accounts[this.accountIndex].zpub,
       this.network
-    );
+    )
   }
 
   /**
    * Return path in addressN format
    * @param path Required derivation path
-   * @returns
+   * @returns number[]
    */
   private convertToAddressNFormat(path: string): number[] {
-    const pathArray = path.replace(/'/g, '').split('/');
+    const pathArray = path.replace(/'/g, '').split('/')
 
-    pathArray.shift();
+    pathArray.shift()
 
-    const addressN = [];
-
-    for (const index in pathArray) {
+    const addressN = []
+    pathArray.forEach((index) => {
       if (Number(index) <= 2 && Number(index) >= 0) {
-        addressN[Number(index)] = Number(pathArray[index]) | 0x80000000;
+        // eslint-disable-next-line no-bitwise
+        addressN[Number(index)] = Number(pathArray[index]) | 0x80000000
       } else {
-        addressN[Number(index)] = Number(pathArray[index]);
+        addressN[Number(index)] = Number(pathArray[index])
       }
-    }
+    })
 
-    return addressN;
+    return addressN
   }
 
   /**
@@ -375,23 +363,23 @@ export class TrezorSigner extends Signer {
    */
   private isScriptHash(address: string, networkInfo: Network): boolean {
     if (!this.isBech32(address)) {
-      const decoded = utxoLib.address.fromBase58Check(address);
+      const decoded = utxoLib.address.fromBase58Check(address)
       if (decoded.version === networkInfo.pubKeyHash) {
-        return false;
+        return false
       }
       if (decoded.version === networkInfo.scriptHash) {
-        return true;
+        return true
       }
     } else {
-      const decoded = utxoLib.address.fromBech32(address);
+      const decoded = utxoLib.address.fromBech32(address)
       if (decoded.data.length === 20) {
-        return false;
+        return false
       }
       if (decoded.data.length === 32) {
-        return true;
+        return true
       }
     }
-    throw new Error('isScriptHash: Unknown address type');
+    throw new Error('isScriptHash: Unknown address type')
   }
 
   /**
@@ -401,29 +389,29 @@ export class TrezorSigner extends Signer {
    */
   private isBech32(address: string): boolean {
     try {
-      utxoLib.address.fromBech32(address);
-      return true;
+      utxoLib.address.fromBech32(address)
+      return true
     } catch (e) {
-      return false;
+      return false
     }
   }
 
-  private isPaymentFactory(
-    payment: (a: Payment, opts?: PaymentOpts) => Payment
-  ): (script: Buffer) => boolean {
+  private isPaymentFactory(payment: typeof bjs.payments.p2wsh) {
     return (script: Buffer) => {
       try {
-        payment({ output: script });
-        return true;
+        payment({ output: script })
+        return true
       } catch (err) {
-        return false;
+        return false
       }
-    };
+    }
   }
 
-  private isP2WSHScript = this.isPaymentFactory(bjs.payments.p2wsh);
+  private isP2WSHScript = this.isPaymentFactory(bjs.payments.p2wsh)
 
   private range(index: number): number[] {
-    return [...Array(index).keys()];
+    return [...Array(index).keys()]
   }
 }
+
+export default TrezorSigner

@@ -1,5 +1,5 @@
-import axios from "axios";
-import { Asset, AssetPage } from "../../types/asset-information";
+import axios from 'axios'
+import { Asset, AssetPage } from '../../types/asset-information'
 
 /**
  * Fetch list of assets from backend Blockbook provider via a filter
@@ -12,20 +12,20 @@ export async function fetchBackendListAssets(
   filter: string
 ): Promise<Asset[]> {
   try {
-    let blockbookURL = backendURL.slice();
+    let blockbookURL = backendURL.slice()
     if (blockbookURL) {
-      blockbookURL = blockbookURL.replace(/\/$/, "");
+      blockbookURL = blockbookURL.replace(/\/$/, '')
     }
     const request = await axios.get<AssetPage>(
-      blockbookURL + "/api/v2/assets/" + filter
-    );
+      `${blockbookURL}/api/v2/assets/${filter}`
+    )
     if (request && request.data && request.data.assets) {
-      return request.data.assets;
+      return request.data.assets
     }
-    return null;
+    return null
   } catch (e) {
-    return e;
+    return e
   }
 }
 
-export default fetchBackendListAssets;
+export default fetchBackendListAssets

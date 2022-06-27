@@ -1,6 +1,6 @@
-import syscoin from "./syscoin";
+import syscoin from './syscoin'
 
 export default {
   SyscoinJSLib: syscoin,
   syscoin,
-};
+}

@@ -1,6 +1,6 @@
-import { Network } from "bitcoinjs-lib";
+import { Network } from 'bitcoinjs-lib'
 
 export interface Networks {
-  mainnet: Network;
-  testnet: Network;
+  mainnet: Network
+  testnet: Network
 }

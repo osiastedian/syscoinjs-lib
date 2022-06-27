@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios'
 
 /**
  * Fetch notarization signature via axois from an endPoint URL, see spec for more info: https://github.com/syscoin/sips/blob/master/sip-0002.mediawiki
@@ -11,14 +11,14 @@ export async function fetchNotarizationFromEndPoint(
   txHex: string
 ) {
   try {
-    const request = await axios.post(endPoint, { tx: txHex });
+    const request = await axios.post(endPoint, { tx: txHex })
     if (request && request.data) {
-      return request.data;
+      return request.data
     }
-    return null;
+    return null
   } catch (e) {
-    return e;
+    return e
   }
 }
 
-export default fetchNotarizationFromEndPoint;
+export default fetchNotarizationFromEndPoint

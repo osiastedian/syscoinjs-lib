@@ -1,30 +1,41 @@
-import { PubTypes } from '../types/pubtype';
+import { fromZPrv, fromZPub } from 'bip84'
+import bjs, { Network } from 'bitcoinjs-lib'
+import { PubTypes } from '../types/pubtype'
 import {
   bitcoinZPubTypes,
   syscoinNetworks,
   syscoinZPubTypes,
-} from './constants';
-import { fromZPrv, fromZPub } from 'bip84';
-import { XPUBToken } from '../types/xpub-token';
-import fetchBackendAccount from './functions/fetchBackendAccount';
-import bjs, { Network } from 'bitcoinjs-lib';
-import { Networks } from '../types/network';
+} from './constants'
+import { XPUBToken } from '../types/xpub-token'
+import fetchBackendAccount from './functions/fetchBackendAccount'
+import { Networks } from '../types/network'
 
-export type Account = fromZPrv | fromZPub;
+export type Account = fromZPrv | fromZPub
 
 export class Signer {
-  password: string;
-  isTestnet: boolean;
-  networks: Networks;
-  SLIP44: number;
-  network: Network;
-  pubTypes: PubTypes;
-  accounts: Account[] = [];
-  changeIndex = -1;
-  receivingIndex = -1;
-  accountIndex = 0;
-  setIndexFlag = 0;
-  blockbookURL: string;
+  password: string
+
+  isTestnet: boolean
+
+  networks: Networks
+
+  SLIP44: number
+
+  network: Network
+
+  pubTypes: PubTypes
+
+  accounts: Account[] = []
+
+  changeIndex = -1
+
+  receivingIndex = -1
+
+  accountIndex = 0
+
+  setIndexFlag = 0
+
+  blockbookURL: string
 
   constructor(
     password: string,
@@ -33,15 +44,15 @@ export class Signer {
     slip44: number,
     pubtypes: PubTypes
   ) {
-    this.password = password;
-    this.isTestnet = isTestnet || false;
-    this.networks = networks || syscoinNetworks;
-    this.SLIP44 = slip44;
-    this.network = this.networks.testnet || syscoinNetworks.testnet;
+    this.password = password
+    this.isTestnet = isTestnet || false
+    this.networks = networks || syscoinNetworks
+    this.SLIP44 = slip44
+    this.network = this.networks.testnet || syscoinNetworks.testnet
     if (!this.isTestnet) {
-      this.network = this.networks.mainnet || syscoinNetworks.mainnet;
+      this.network = this.networks.mainnet || syscoinNetworks.mainnet
     }
-    this.pubTypes = pubtypes || syscoinZPubTypes;
+    this.pubTypes = pubtypes || syscoinZPubTypes
   }
 
   /**
@@ -52,15 +63,15 @@ export class Signer {
     if (index > this.accounts.length) {
       console.log(
         'Account does not exist, use createAccount to create it first...'
-      );
-      return;
+      )
+      return
     }
     if (this.accountIndex === index) {
-      return;
+      return
     }
-    this.changeIndex = -1;
-    this.receivingIndex = -1;
-    this.accountIndex = index;
+    this.changeIndex = -1
+    this.receivingIndex = -1
+    this.accountIndex = index
   }
 
   /**
@@ -76,7 +87,7 @@ export class Signer {
         'tokens=used&details=tokens',
         true,
         this
-      );
+      )
       if (res === null) {
         // try once more in case it fails for some reason
         res = await fetchBackendAccount(
@@ -85,22 +96,23 @@ export class Signer {
           'tokens=used&details=tokens',
           true,
           this
-        );
+        )
         if (res === null) {
-          throw new Error('Could not update XPUB change index');
+          throw new Error('Could not update XPUB change index')
         }
       }
     }
-    const address = this.createAddress(this.changeIndex + 1, true);
+    const address = this.createAddress(this.changeIndex + 1, true)
     if (address) {
       if (!skipIncrement) {
-        this.changeIndex++;
+        this.changeIndex++
       }
-      return address;
+      return address
     }
 
-    return null;
+    return null
   }
+
   /**
    * Get new address for sending coins to
    * @param skipIncrement Optional. If we should not count the internal receiving index counter (if you want to get the same address in the future)
@@ -114,7 +126,7 @@ export class Signer {
         'tokens=used&details=tokens',
         true,
         this
-      );
+      )
       if (res === null) {
         // try once more in case it fails for some reason
         res = await fetchBackendAccount(
@@ -123,21 +135,21 @@ export class Signer {
           'tokens=used&details=tokens',
           true,
           this
-        );
+        )
         if (res === null) {
-          throw new Error('Could not update XPUB receiving index');
+          throw new Error('Could not update XPUB receiving index')
         }
       }
     }
-    const address = this.createAddress(this.receivingIndex + 1, false);
+    const address = this.createAddress(this.receivingIndex + 1, false)
     if (address) {
       if (!skipIncrement) {
-        this.receivingIndex++;
+        this.receivingIndex++
       }
-      return address;
+      return address
     }
 
-    return null;
+    return null
   }
 
   /**
@@ -145,7 +157,7 @@ export class Signer {
    * @returns: string representing hex XPUB
    */
   getAccountXpub(): string {
-    return this.accounts[this.accountIndex].getAccountPublicKey();
+    return this.accounts[this.accountIndex].getAccountPublicKey()
   }
 
   /**
@@ -153,71 +165,72 @@ export class Signer {
    * @param tokens Required. XPUB tokens from provider response to XPUB account details
    */
   setLatestIndexesFromXPubTokens(tokens: XPUBToken[]) {
-    this.setIndexFlag++;
+    this.setIndexFlag++
     if (this.setIndexFlag > 1 && this.setIndexFlag < 100) {
-      return;
+      return
     }
     if (tokens) {
       tokens.forEach((token) => {
         if (!token.transfers || !token.path) {
-          return;
+          return
         }
         const transfers =
           typeof token.transfers === 'string'
             ? parseInt(token.transfers, 10)
-            : token.transfers;
+            : token.transfers
         if (token.path && transfers > 0) {
-          const splitPath = token.path.split('/');
+          const splitPath = token.path.split('/')
           if (splitPath.length >= 6) {
-            const change = parseInt(splitPath[4], 10);
-            const index = parseInt(splitPath[5], 10);
+            const change = parseInt(splitPath[4], 10)
+            const index = parseInt(splitPath[5], 10)
             if (change === 1) {
               if (index > this.changeIndex) {
-                this.changeIndex = index;
+                this.changeIndex = index
               }
             } else if (index > this.receivingIndex) {
-              this.receivingIndex = index;
+              this.receivingIndex = index
             }
           }
         }
-      });
+      })
     }
-    this.setIndexFlag = 0;
+    this.setIndexFlag = 0
   }
 
   createAddress(addressIndex: number, isChange: boolean) {
-    let bipNum = 44;
+    let bipNum = 44
     if (
       this.pubTypes === syscoinZPubTypes ||
       this.pubTypes === bitcoinZPubTypes
     ) {
-      bipNum = 84;
+      bipNum = 84
     }
     return this.accounts[this.accountIndex].getAddress(
       addressIndex,
       isChange,
       bipNum
-    );
+    )
   }
+
   /**
    *
    * @param addressIndex Optional. HT Path address index. If not provided uses the stored change/recv indexes for the last path prefix
    * @param isChange Optional. HD Path change parker
    */
   getHDPath(addressIndex?: number, isChange?: boolean): string {
-    const changeNum = isChange ? '1' : '0';
-    let bipNum = 44;
+    const changeNum = isChange ? '1' : '0'
+    let bipNum = 44
     if (
       this.pubTypes === syscoinZPubTypes ||
       this.pubTypes === bitcoinZPubTypes
     ) {
-      bipNum = 84;
+      bipNum = 84
     }
-    let recvIndex = isChange ? this.changeIndex : this.receivingIndex;
+    let recvIndex = isChange ? this.changeIndex : this.receivingIndex
     if (addressIndex) {
-      recvIndex = addressIndex;
+      recvIndex = addressIndex
     }
-    return `m/${bipNum}'/${this.SLIP44}'/${this.accountIndex}'/${changeNum}/${recvIndex}`;
+    return `m/${bipNum}'/${this.SLIP44}'/${this.accountIndex}'/${changeNum}/${recvIndex}`
   }
 
   /**
@@ -227,11 +240,11 @@ export class Signer {
    */
   getAddressFromPubKey(pubkey: Buffer): string {
     const payment = bjs.payments.p2wpkh({
-      pubkey: pubkey,
+      pubkey,
       network: this.network,
-    });
-    return payment.address;
+    })
+    return payment.address
   }
 }
 
-export default Signer;
+export default Signer

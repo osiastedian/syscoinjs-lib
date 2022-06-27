@@ -1,13 +1,12 @@
-import bjs from 'bitcoinjs-lib';
+import bjs from 'bitcoinjs-lib'
 
-import { Networks } from '../types/network';
+import { Networks } from '../types/network'
 
 export const bitcoinNetworks: Networks = {
   mainnet: bjs.networks.bitcoin,
   testnet: bjs.networks.testnet,
-};
+}
 
-/* global localStorage */
 export const syscoinNetworks: Networks = {
   mainnet: {
     messagePrefix: '\x18Syscoin Signed Message:\n',
@@ -31,12 +30,12 @@ export const syscoinNetworks: Networks = {
     scriptHash: 0xc4,
     wif: 0xef,
   },
-};
+}
 
 export const bitcoinZPubTypes = {
   mainnet: { zprv: '04b2430c', zpub: '04b24746' },
   testnet: { vprv: '045f18bc', vpub: '045f1cf6' },
-};
+}
 export const bitcoinXPubTypes = {
   mainnet: {
     zprv: bitcoinNetworks.mainnet.bip32.private,
@@ -46,11 +45,11 @@ export const bitcoinXPubTypes = {
     vprv: bitcoinNetworks.testnet.bip32.private,
     vpub: bitcoinNetworks.testnet.bip32.public,
   },
-};
+}
 export const syscoinZPubTypes = {
   mainnet: { zprv: '04b2430c', zpub: '04b24746' },
   testnet: { vprv: '045f18bc', vpub: '045f1cf6' },
-};
+}
 export const syscoinXPubTypes = {
   mainnet: {
     zprv: syscoinNetworks.mainnet.bip32.private,
@@ -60,10 +59,10 @@ export const syscoinXPubTypes = {
     vprv: syscoinNetworks.testnet.bip32.private,
     vpub: syscoinNetworks.testnet.bip32.public,
   },
-};
-export const syscoinSLIP44 = 57;
-export const bitcoinSLIP44 = 0;
-export const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/';
-export const ERC20Manager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1';
+}
+export const syscoinSLIP44 = 57
+export const bitcoinSLIP44 = 0
+export const DEFAULT_TREZOR_DOMAIN = 'https://connect.trezor.io/8/'
+export const ERC20Manager = '0xA738a563F9ecb55e0b2245D1e9E380f0fE455ea1'
 export const tokenFreezeFunction =
-  '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732'; // token freeze function signature
+  '7ca654cf9212e4c3cf0164a529dd6159fc71113f867d0b09fdeb10aa65780732' // token freeze function signature

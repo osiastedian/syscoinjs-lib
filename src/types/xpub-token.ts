@@ -1,4 +1,4 @@
 export interface XPUBToken {
-  path: string;
-  transfers: number | string;
+  path: string
+  transfers: number | string
 }

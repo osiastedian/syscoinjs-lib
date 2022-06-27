@@ -1,17 +1,20 @@
-import { PubTypes } from '../types/pubtype';
-import Signer from './Signer';
-import { fromMnemonic, fromZPrv } from 'bip84';
-import CryptoJS from 'crypto-js';
-import { bitcoinZPubTypes, syscoinZPubTypes } from './constants';
-import { BIP32Interface, Psbt } from 'bitcoinjs-lib';
-import bjs from 'bitcoinjs-lib';
-import { Networks } from '../types/network';
+import { fromMnemonic, fromZPrv } from 'bip84'
+import CryptoJS from 'crypto-js'
+import bjs, { BIP32Interface, Psbt } from 'bitcoinjs-lib'
+import { bitcoinZPubTypes, syscoinZPubTypes } from './constants'
+import Signer from './Signer'
+import { PubTypes } from '../types/pubtype'
+import { Networks } from '../types/network'
 
 export class HDSigner extends Signer {
-  mnemonic: string;
-  fromMnemonic: fromMnemonic;
-  changeIndex: number;
-  receivingIndex: number;
+  mnemonic: string
+
+  fromMnemonic: fromMnemonic
+
+  changeIndex: number
+
+  receivingIndex: number
+
   constructor(
     mnemonic: string,
     password: string,
@@ -20,8 +23,8 @@ export class HDSigner extends Signer {
     slip44: number,
     pubtypes: PubTypes
   ) {
-    super(password, isTestnet, networks, slip44, pubtypes);
-    this.mnemonic = mnemonic;
+    super(password, isTestnet, networks, slip44, pubtypes)
+    this.mnemonic = mnemonic
     this.fromMnemonic = new fromMnemonic(
       mnemonic,
       this.password,
@@ -29,9 +32,9 @@ export class HDSigner extends Signer {
       this.SLIP44,
       this.pubTypes,
       this.network
-    );
+    )
     if (!this.password || !this.restore(this.password)) {
-      this.createAccount();
+      this.createAccount()
     }
   }
 
@@ -42,10 +45,10 @@ export class HDSigner extends Signer {
    * @returns psbt from bitcoinjs-lib
    */
   async signPSBT(psbt: Psbt, pathIn?: string) {
-    const txInputs = psbt.txInputs;
-    const fp = this.getMasterFingerprint();
+    const { txInputs } = psbt
+    const fp = this.getMasterFingerprint()
     for (let i = 0; i < txInputs.length; i++) {
-      const dataInput = psbt.data.inputs[i];
+      const dataInput = psbt.data.inputs[i]
       if (
         pathIn ||
         (dataInput.unknownKeyVals &&
@@ -54,9 +57,9 @@ export class HDSigner extends Signer {
           (!dataInput.bip32Derivation ||
             dataInput.bip32Derivation.length === 0))
       ) {
-        const path = pathIn || dataInput.unknownKeyVals[1].value.toString();
-        const pubkey = this.derivePubKey(path);
-        const address = this.getAddressFromPubKey(pubkey);
+        const path = pathIn || dataInput.unknownKeyVals[1].value.toString()
+        const pubkey = this.derivePubKey(path)
+        const address = this.getAddressFromPubKey(pubkey)
         if (
           pubkey &&
           (pathIn || dataInput.unknownKeyVals[0].value.toString() === address)
@@ -64,20 +67,20 @@ export class HDSigner extends Signer {
           dataInput.bip32Derivation = [
             {
               masterFingerprint: fp,
-              path: path,
-              pubkey: pubkey,
+              path,
+              pubkey,
             },
-          ];
+          ]
         }
       }
     }
-    await psbt.signAllInputsHDAsync(this.getRootNode());
+    await psbt.signAllInputsHDAsync(this.getRootNode())
     try {
       if (psbt.validateSignaturesOfAllInputs()) {
-        psbt.finalizeAllInputs();
+        psbt.finalizeAllInputs()
       }
     } catch (err) {}
-    return psbt;
+    return psbt
   }
 
   /**
@@ -86,87 +89,89 @@ export class HDSigner extends Signer {
    * @returns: psbt from bitcoinjs-lib
    */
   async sign(psbt: Psbt, pathIn?: string) {
-    return await this.signPSBT(psbt, pathIn);
+    return this.signPSBT(psbt, pathIn)
   }
+
   /**
    * Get master seed fingerprint used for signing with bitcoinjs-lib PSBT's
    * @returns: bip32 root master fingerprint
    */
   getMasterFingerprint() {
-    return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.network).fingerprint;
+    return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.network).fingerprint
   }
 
   deriveAccount(index: number) {
-    let bipNum = 44;
+    let bipNum = 44
     if (
       this.pubTypes === syscoinZPubTypes ||
       this.pubTypes === bitcoinZPubTypes
     ) {
-      bipNum = 84;
+      bipNum = 84
     }
-    return this.fromMnemonic.deriveAccount(index, bipNum);
+    return this.fromMnemonic.deriveAccount(index, bipNum)
   }
 
   restore(password: string): boolean {
     let browserStorage =
       typeof localStorage === 'undefined' || localStorage === null
         ? null
-        : localStorage;
+        : localStorage
     if (!browserStorage) {
-      const LocalStorage = require('node-localstorage').LocalStorage;
-      browserStorage = new LocalStorage('./scratch');
+      const { LocalStorage } = require('node-localstorage')
+      browserStorage = new LocalStorage('./scratch')
     }
-    const key = this.network.bech32 + '_hdsigner';
-    const ciphertext = browserStorage.getItem(key);
+    const key = `${this.network.bech32}_hdsigner`
+    const ciphertext = browserStorage.getItem(key)
     if (ciphertext === null) {
-      return false;
+      return false
     }
-    const bytes = CryptoJS.AES.decrypt(ciphertext, password);
+    const bytes = CryptoJS.AES.decrypt(ciphertext, password)
     if (!bytes || bytes.length === 0) {
-      return false;
+      return false
     }
-    const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-    this.mnemonic = decryptedData.mnemonic;
-    const numAccounts = decryptedData.numAccounts;
+    const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8))
+    this.mnemonic = decryptedData.mnemonic
+    const { numAccounts } = decryptedData
     // sanity checks
     if (this.accountIndex > 1000) {
-      return false;
+      return false
     }
-    this.accounts = [];
-    this.changeIndex = -1;
-    this.receivingIndex = -1;
-    this.accountIndex = 0;
+    this.accounts = []
+    this.changeIndex = -1
+    this.receivingIndex = -1
+    this.accountIndex = 0
     for (let i = 0; i < numAccounts; i++) {
-      const child = this.deriveAccount(i);
-      this.accounts.push(new fromZPrv(child, this.pubTypes, this.networks));
+      const child = this.deriveAccount(i)
+      this.accounts.push(new fromZPrv(child, this.pubTypes, this.networks))
     }
 
-    return true;
+    return true
   }
 
   backup(): void {
     let browserStorage =
       typeof localStorage === 'undefined' || localStorage === null
         ? null
-        : localStorage;
+        : localStorage
     if (!this.password) {
-      return;
+      return
     }
     if (!browserStorage) {
-      const LocalStorage = require('node-localstorage').LocalStorage;
-      browserStorage = new LocalStorage('./scratch');
+      const { LocalStorage } = require('node-localstorage')
+      browserStorage = new LocalStorage('./scratch')
     }
-    const key = this.network.bech32 + '_hdsigner';
+    const key = `${this.network.bech32}_hdsigner`
     const obj = {
       mnemonic: this.mnemonic,
       numAccounts: this.accounts.length,
-    };
+    }
     const ciphertext = CryptoJS.AES.encrypt(
       JSON.stringify(obj),
       this.password
-    ).toString();
-    browserStorage.setItem(key, ciphertext);
+    ).toString()
+    browserStorage.setItem(key, ciphertext)
   }
+
   /**
    * Takes an HD path and derives keypair from it, returns pubkey
    * @param keypath: Required. HD BIP32 path of key desired based on internal seed and network
@@ -175,29 +180,29 @@ export class HDSigner extends Signer {
   derivePubKey(keypath: string) {
     const keyPair = bjs.bip32
       .fromSeed(this.fromMnemonic.seed, this.network)
-      .derivePath(keypath);
+      .derivePath(keypath)
     if (!keyPair) {
-      return null;
+      return null
     }
-    return keyPair.publicKey;
+    return keyPair.publicKey
   }
 
   createAccount() {
-    this.changeIndex = -1;
-    this.receivingIndex = -1;
-    const child = this.deriveAccount(this.accounts.length);
-    this.accountIndex = this.accounts.length;
-    this.accounts.push(new fromZPrv(child, this.pubTypes, this.networks));
-    this.backup();
-    return this.accountIndex;
+    this.changeIndex = -1
+    this.receivingIndex = -1
+    const child = this.deriveAccount(this.accounts.length)
+    this.accountIndex = this.accounts.length
+    this.accounts.push(new fromZPrv(child, this.pubTypes, this.networks))
+    this.backup()
+    return this.accountIndex
   }
 
   createKeyPair(addressIndex: number, isChange: boolean) {
-    let recvIndex = isChange ? this.changeIndex : this.receivingIndex;
+    let recvIndex = isChange ? this.changeIndex : this.receivingIndex
     if (addressIndex) {
-      recvIndex = addressIndex;
+      recvIndex = addressIndex
     }
-    return this.accounts[this.accountIndex].getKeypair(recvIndex, isChange);
+    return this.accounts[this.accountIndex].getKeypair(recvIndex, isChange)
   }
 
   /**
@@ -209,9 +214,9 @@ export class HDSigner extends Signer {
     const payment = bjs.payments.p2wpkh({
       pubkey: keyPair.publicKey,
       network: this.network,
-    });
-    return payment.address;
-  };
+    })
+    return payment.address
+  }
 
   /**
    * Takes an HD path and derives keypair from it
@@ -221,11 +226,11 @@ export class HDSigner extends Signer {
   deriveKeypair(keypath: string): BIP32Interface {
     const keyPair = bjs.bip32
       .fromSeed(this.fromMnemonic.seed, this.network)
-      .derivePath(keypath);
+      .derivePath(keypath)
     if (!keyPair) {
-      return null;
+      return null
     }
-    return keyPair;
+    return keyPair
   }
 
   /**
@@ -233,8 +238,8 @@ export class HDSigner extends Signer {
    * @returns BIP32 root node representing the seed
    */
   getRootNode(): BIP32Interface {
-    return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.network);
+    return bjs.bip32.fromSeed(this.fromMnemonic.seed, this.network)
   }
 }
 
-export default HDSigner;
+export default HDSigner

@@ -3,6 +3,7 @@ module.exports = {
     browser: true,
     es2021: true,
     node: true,
+    es6: true,
   },
   extends: ['airbnb-base', 'prettier'],
   parser: '@typescript-eslint/parser',
@@ -12,6 +13,7 @@ module.exports = {
     tsconfigRootDir: './',
   },
   plugins: ['@typescript-eslint', 'prettier'],
+  ignorePatterns: ['./lib/**/*.ts'],
   rules: {
     'prettier/prettier': 'error',
     'no-redeclare': 'off',
@@ -29,6 +31,7 @@ module.exports = {
     'new-cap': 'warn',
     'no-empty': 'warn',
     'global-require': 'off',
+    'class-methods-use-this': 'off',
   },
   settings: {
     'import/resolver': {

@@ -6,23 +6,23 @@
  * @returns Returns JSON object in response, UTXO object array in JSON
  */
 
-import axios from "axios";
+import axios from 'axios'
 
 export async function fetchBackendSPVProof(backendURL: string, txid: string) {
   try {
-    let blockbookURL = backendURL.slice();
+    let blockbookURL = backendURL.slice()
     if (blockbookURL) {
-      blockbookURL = blockbookURL.replace(/\/$/, "");
+      blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    const url = blockbookURL + "/api/v2/getspvproof/" + txid;
-    const request = await axios.get(url);
+    const url = `${blockbookURL}/api/v2/getspvproof/${txid}`
+    const request = await axios.get(url)
     if (request && request.data) {
-      return request.data;
+      return request.data
     }
-    return null;
+    return null
   } catch (e) {
-    return e;
+    return e
   }
 }
 
-export default fetchBackendSPVProof;
+export default fetchBackendSPVProof
