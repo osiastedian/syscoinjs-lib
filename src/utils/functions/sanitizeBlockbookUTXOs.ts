@@ -30,9 +30,12 @@ export async function sanitizeBlockbookUTXOs(
   utxoObj: UtxoObject,
   network?: Network,
   txOpts?: TxOptions,
-  assetMap?,
+  assetMap?: Map<
+    string,
+    { changeAddress?: string; outputs: [{ value: BN; address: string }] }
+  >,
   excludeZeroConf?: boolean
-) {
+): Promise<SanitizedUtxoObject> {
   if (!txOpts) {
     txOpts = { rbf: false };
   }
