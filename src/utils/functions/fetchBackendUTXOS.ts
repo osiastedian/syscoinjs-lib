@@ -1,5 +1,16 @@
 import axios from 'axios';
-import { UtxoObject } from '../../types/utxo-object';
+
+/**
+ * Refer to https://github.com/trezor/blockbook/blob/master/docs/api.md#get-utxo
+ */
+interface UTXO {
+  txid:          string;
+  vout:          number;
+  value:         string;
+  height:        number;
+  confirmations: number;
+  coinbase:      boolean;
+}
 
 /**
  * Fetch UTXO's for an address or XPUB from backend Blockbook provider
@@ -12,7 +23,7 @@ export async function fetchBackendUTXOS(
   backendURL: string,
   addressOrXpub: string,
   options?: string
-) {
+): Promise<UTXO[]> {
   try {
     let blockbookURL = backendURL.slice();
     if (blockbookURL) {
