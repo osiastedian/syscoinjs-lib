@@ -20,11 +20,11 @@ export function getAssetsRequiringNotarization(
   const assetsUsedInTxNeedingNotarization = new Map()
   assetsInTx.forEach((value: any, baseAssetID: string) => {
     if (assetsUsedInTxNeedingNotarization.has(baseAssetID)) {
-      return new Map()
+      return
     }
     if (!assets.has(baseAssetID)) {
       console.log('Asset input not found in the UTXO assets map!')
-      return new Map()
+      return
     }
     const valueAssetObj = assets.get(baseAssetID)
     if (

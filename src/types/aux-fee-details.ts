@@ -1,11 +1,11 @@
-export interface AuxFeeDetails {
-  auxFeeKeyID: string
-  auxFees: AuxFee[]
-}
-
 export interface AuxFee {
   bound: number
   percent: number
+}
+
+export interface AuxFeeDetails {
+  auxFeeKeyID: string
+  auxFees: AuxFee[]
 }
 
 export interface SanitizedAuxFeeDetails {

@@ -1,24 +1,9 @@
 import BN from 'bn.js'
 import { AuxFeeDetails, SanitizedAuxFeeDetails } from './aux-fee-details'
 
-export interface UtxoObject {
-  utxos: UTXO[]
-  assets: UtxoAsset[]
-}
-
-export interface UtxoAsset {
+export interface UtxoAssetInfo {
   assetGuid: string
-  decimals: number
-  pubData: PubData
-  symbol: string
-  updateCapabilityFlags: number
-  totalSupply: string
-  maxSupply: string
-  notaryKeyID: string
-  notaryDetails: NotaryDetails
-  notarySig: string
-  contract: string
-  auxFeeDetails: AuxFeeDetails
+  value: string | BN
 }
 
 /**
@@ -37,9 +22,8 @@ export interface UTXO {
   coinbase: boolean
 }
 
-export interface UtxoAssetInfo {
-  assetGuid: string
-  value: string | BN
+interface PubData {
+  desc: string
 }
 
 interface NotaryDetails {
@@ -48,13 +32,35 @@ interface NotaryDetails {
   HDRequired: number
 }
 
-interface PubData {
-  desc: string
+export interface UtxoAsset {
+  assetGuid: string
+  decimals: number
+  pubData: PubData
+  symbol: string
+  updateCapabilityFlags: number
+  totalSupply: string
+  maxSupply: string
+  notaryKeyID: string
+  notaryDetails: NotaryDetails
+  notarySig: string
+  contract: string
+  auxFeeDetails: AuxFeeDetails
+}
+
+export interface UtxoObject {
+  utxos: UTXO[]
+  assets: UtxoAsset[]
 }
 
 export interface SanitizedUtxoObject {
   utxos: UTXO[]
   assets?: Map<string, Object>
+}
+
+export interface SanitizedNotaryDetails {
+  endpoint: Buffer
+  instanttransfers: number
+  hdrequired: number
 }
 
 export interface SanitiziedUtxoAsset {
@@ -68,10 +74,4 @@ export interface SanitiziedUtxoAsset {
   updatecapabilityflags: number
   maxsupply: BN
   precision: number
-}
-
-export interface SanitizedNotaryDetails {
-  endpoint: Buffer
-  instanttransfers: number
-  hdrequired: number
 }

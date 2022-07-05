@@ -1,27 +1,6 @@
 /**
- * Refer to https://github.com/trezor/blockbook/blob/master/docs/api.md#get-transaction
- */
-export type BlockbookTransaction =
-  | BlockbookTransactionBTC
-  | BlockbookTransactionETH
-
-/**
  * Bitcoin-type coins
  */
-export interface BlockbookTransactionBTC {
-  txid: string
-  version: number
-  vin: TxBTCVin[]
-  vout: TxBTCVout[]
-  blockHash: string
-  blockHeight: number
-  confirmations: number
-  blockTime: number
-  value: string
-  valueIn: string
-  fees: string
-  hex: string
-}
 
 export interface TxBTCVin {
   txid: string
@@ -42,21 +21,37 @@ export interface TxBTCVout {
   isAddress: boolean
 }
 
-/**
- * Ethereum-type coins
- */
-export interface BlockbookTransactionETH {
+export interface BlockbookTransactionBTC {
   txid: string
-  vin: EthVin[]
-  vout: EthVin[]
+  version: number
+  vin: TxBTCVin[]
+  vout: TxBTCVout[]
   blockHash: string
   blockHeight: number
   confirmations: number
   blockTime: number
   value: string
+  valueIn: string
   fees: string
-  tokenTransfers: EthTokenTransfer[]
-  ethereumSpecific: EthereumSpecific
+  hex: string
+}
+
+/**
+ * Ethereum-type coins
+ */
+
+export interface EthVin {
+  n: number
+  addresses: string[]
+  isAddress: boolean
+  value?: string
+}
+
+export interface EthVout {
+  n: number
+  addresses: string[]
+  isAddress: boolean
+  value?: string
 }
 
 export interface EthereumSpecific {
@@ -79,16 +74,23 @@ export interface EthTokenTransfer {
   value: string
 }
 
-export interface EthVin {
-  n: number
-  addresses: string[]
-  isAddress: boolean
-  value?: string
+export interface BlockbookTransactionETH {
+  txid: string
+  vin: EthVin[]
+  vout: EthVin[]
+  blockHash: string
+  blockHeight: number
+  confirmations: number
+  blockTime: number
+  value: string
+  fees: string
+  tokenTransfers: EthTokenTransfer[]
+  ethereumSpecific: EthereumSpecific
 }
 
-export interface EthVout {
-  n: number
-  addresses: string[]
-  isAddress: boolean
-  value?: string
-}
+/**
+ * Refer to https://github.com/trezor/blockbook/blob/master/docs/api.md#get-transaction
+ */
+export type BlockbookTransaction =
+  | BlockbookTransactionBTC
+  | BlockbookTransactionETH
