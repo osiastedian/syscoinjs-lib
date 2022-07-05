@@ -1,5 +1,5 @@
-import { AuxFeeDetails, SanitizedAuxFeeDetails } from './aux-fee-details'
 import BN from 'bn.js'
+import { AuxFeeDetails, SanitizedAuxFeeDetails } from './aux-fee-details'
 
 export interface UtxoObject {
   utxos: UTXO[]

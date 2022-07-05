@@ -1,7 +1,7 @@
-import BN from 'bn.js';
+import BN from 'bn.js'
 
 export function getBaseAssetID(assetGuid: string): string {
-  return new BN(assetGuid).and(new BN(0xffffffff)).toString(10);
+  return new BN(assetGuid).and(new BN(0xffffffff)).toString(10)
 }
 
-export default getBaseAssetID;
+export default getBaseAssetID

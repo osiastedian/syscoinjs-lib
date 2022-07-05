@@ -1,18 +1,17 @@
-import { Network } from 'bitcoinjs-lib';
+import bjs, { Network } from 'bitcoinjs-lib'
+import BN from 'bn.js'
 import {
   SanitizedUtxoObject,
   SanitiziedUtxoAsset,
   UTXO,
   UtxoObject,
-} from '../../types/utxo-object';
-import { syscoinNetworks } from '../constants';
-import getBaseAssetID from './getBaseAssetID';
-import BN from 'bn.js';
-import bjs from 'bitcoinjs-lib';
+} from '../../types/utxo-object'
+import { syscoinNetworks } from '../constants'
+import getBaseAssetID from './getBaseAssetID'
 
 interface TxOptions {
-  rbf: boolean;
-  assetWhiteList?: Map<string, Object>;
+  rbf: boolean
+  assetWhiteList?: Map<string, Object>
 }
 
 /**
@@ -37,36 +36,36 @@ export async function sanitizeBlockbookUTXOs(
   excludeZeroConf?: boolean
 ): Promise<SanitizedUtxoObject> {
   if (!txOpts) {
-    txOpts = { rbf: false };
+    txOpts = { rbf: false }
   }
-  const sanitizedUtxos: SanitizedUtxoObject = { utxos: [] };
+  const sanitizedUtxos: SanitizedUtxoObject = { utxos: [] }
   if (Array.isArray(utxoObj)) {
-    utxoObj.utxos = utxoObj;
+    utxoObj.utxos = utxoObj
   }
   if (utxoObj.assets) {
-    sanitizedUtxos.assets = new Map();
+    sanitizedUtxos.assets = new Map()
     utxoObj.assets.forEach((asset) => {
-      const assetObj: Partial<SanitiziedUtxoAsset> = {};
+      const assetObj: Partial<SanitiziedUtxoAsset> = {}
       if (asset.contract) {
-        asset.contract = asset.contract.replace(/^0x/, '');
-        assetObj.contract = Buffer.from(asset.contract, 'hex');
+        asset.contract = asset.contract.replace(/^0x/, '')
+        assetObj.contract = Buffer.from(asset.contract, 'hex')
       }
       if (asset.pubData) {
-        assetObj.pubdata = Buffer.from(JSON.stringify(asset.pubData));
+        assetObj.pubdata = Buffer.from(JSON.stringify(asset.pubData))
       }
       if (asset.notaryKeyID) {
-        assetObj.notarykeyid = Buffer.from(asset.notaryKeyID, 'base64');
-        network = network || syscoinNetworks.mainnet;
+        assetObj.notarykeyid = Buffer.from(asset.notaryKeyID, 'base64')
+        network = network || syscoinNetworks.mainnet
         assetObj.notaryaddress = bjs.payments.p2wpkh({
           hash: assetObj.notarykeyid,
-          network: network,
-        }).address;
+          network,
+        }).address
         // in unit tests notarySig may be provided
         if (asset.notarySig) {
-          assetObj.notarysig = Buffer.from(asset.notarySig, 'base64');
+          assetObj.notarysig = Buffer.from(asset.notarySig, 'base64')
         } else {
           // prefill in this likely case where notarySig isn't provided
-          assetObj.notarysig = Buffer.alloc(65, 0);
+          assetObj.notarysig = Buffer.alloc(65, 0)
         }
       }
       if (asset.notaryDetails) {
@@ -74,55 +73,55 @@ export async function sanitizeBlockbookUTXOs(
           endpoint: null,
           instanttransfers: null,
           hdrequired: null,
-        };
+        }
 
         if (asset.notaryDetails.endPoint) {
           assetObj.notarydetails.endpoint = Buffer.from(
             asset.notaryDetails.endPoint,
             'base64'
-          );
+          )
         } else {
-          assetObj.notarydetails.endpoint = Buffer.from('');
+          assetObj.notarydetails.endpoint = Buffer.from('')
         }
         assetObj.notarydetails.instanttransfers =
-          asset.notaryDetails.instantTransfers;
-        assetObj.notarydetails.hdrequired = asset.notaryDetails.HDRequired;
+          asset.notaryDetails.instantTransfers
+        assetObj.notarydetails.hdrequired = asset.notaryDetails.HDRequired
       }
       if (asset.auxFeeDetails) {
         assetObj.auxfeedetails = {
           auxfeekeyid: null,
           auxfees: null,
-        };
+        }
         if (asset.auxFeeDetails.auxFeeKeyID) {
           assetObj.auxfeedetails.auxfeekeyid = Buffer.from(
             asset.auxFeeDetails.auxFeeKeyID,
             'base64'
-          );
+          )
           assetObj.auxfeedetails.auxfeeaddress = bjs.payments.p2wpkh({
             hash: assetObj.auxfeedetails.auxfeekeyid,
             network: syscoinNetworks.testnet,
-          }).address;
+          }).address
         } else {
-          assetObj.auxfeedetails.auxfeekeyid = Buffer.from('');
+          assetObj.auxfeedetails.auxfeekeyid = Buffer.from('')
         }
-        assetObj.auxfeedetails.auxfees = asset.auxFeeDetails.auxFees;
+        assetObj.auxfeedetails.auxfees = asset.auxFeeDetails.auxFees
       }
       if (asset.updateCapabilityFlags) {
-        assetObj.updatecapabilityflags = asset.updateCapabilityFlags;
+        assetObj.updatecapabilityflags = asset.updateCapabilityFlags
       }
 
-      assetObj.maxsupply = new BN(asset.maxSupply);
-      assetObj.precision = asset.decimals;
+      assetObj.maxsupply = new BN(asset.maxSupply)
+      assetObj.precision = asset.decimals
 
-      sanitizedUtxos.assets.set(asset.assetGuid, assetObj);
-    });
+      sanitizedUtxos.assets.set(asset.assetGuid, assetObj)
+    })
   }
   if (utxoObj.utxos) {
     utxoObj.utxos.forEach((utxo) => {
       // xpub queries will return utxo.address and address queries should use sysFromXpubOrAddress as address is not provided
-      utxo.address = utxo.address || sysFromXpubOrAddress;
+      utxo.address = utxo.address || sysFromXpubOrAddress
       if (excludeZeroConf && utxo.confirmations <= 0) {
-        return;
+        return
       }
       const newUtxo: Partial<UTXO> & { type: string; txId: string } = {
         type: 'LEGACY',
@@ -132,20 +131,20 @@ export async function sanitizeBlockbookUTXOs(
         vout: utxo.vout,
         value: new BN(utxo.value),
         locktime: utxo.locktime,
-      };
+      }
       if (newUtxo.address.startsWith(network.bech32)) {
-        newUtxo.type = 'BECH32';
+        newUtxo.type = 'BECH32'
       }
       if (utxo.assetInfo) {
-        const baseAssetID = getBaseAssetID(utxo.assetInfo.assetGuid);
+        const baseAssetID = getBaseAssetID(utxo.assetInfo.assetGuid)
         newUtxo.assetInfo = {
           assetGuid: utxo.assetInfo.assetGuid,
           value: new BN(utxo.assetInfo.value),
-        };
-        const assetObj = sanitizedUtxos.assets.get(baseAssetID);
+        }
+        const assetObj = sanitizedUtxos.assets.get(baseAssetID)
         // sanity check to ensure sanitizedUtxos.assets has all of the assets being added to UTXO that are assets
         if (!assetObj) {
-          return;
+          return
         }
         // not sending this asset (assetMap) and assetWhiteList option if set with this asset will skip this check, by default this check is done and inputs will be skipped if they are notary asset inputs and user is not sending those assets (used as gas to fulfill requested output amount of SYS)
         if (
@@ -154,15 +153,15 @@ export async function sanitizeBlockbookUTXOs(
           !txOpts.assetWhiteList.has(utxo.assetInfo.assetGuid) &&
           !txOpts.assetWhiteList.has(getBaseAssetID(utxo.assetInfo.assetGuid))
         ) {
-          console.log('SKIPPING utxo');
-          return;
+          console.log('SKIPPING utxo')
+          return
         }
       }
-      sanitizedUtxos.utxos.push(newUtxo as UTXO);
-    });
+      sanitizedUtxos.utxos.push(newUtxo as UTXO)
+    })
   }
 
-  return sanitizedUtxos;
+  return sanitizedUtxos
 }
 
-export default sanitizeBlockbookUTXOs;
+export default sanitizeBlockbookUTXOs
