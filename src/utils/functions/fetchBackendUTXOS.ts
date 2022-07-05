@@ -1,16 +1,5 @@
 import axios from 'axios'
-
-/**
- * Refer to https://github.com/trezor/blockbook/blob/master/docs/api.md#get-utxo
- */
-interface UTXO {
-  txid: string
-  vout: number
-  value: string
-  height: number
-  confirmations: number
-  coinbase: boolean
-}
+import { UTXO } from '../../types/utxo-object'
 
 /**
  * Fetch UTXO's for an address or XPUB from backend Blockbook provider

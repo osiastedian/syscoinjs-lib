@@ -8,4 +8,3 @@ export interface AssetAllocation {
   }[]
   notarysig: string | Buffer
 }
-;[]

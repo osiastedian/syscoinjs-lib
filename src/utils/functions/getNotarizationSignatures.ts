@@ -1,3 +1,6 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-continue */
+/* eslint-disable no-restricted-syntax */
 import { NotaryAsset } from '../../types/notary-details'
 import fetchNotarizationFromEndPoint from './fetchNotarizationFromEndPoint'
 

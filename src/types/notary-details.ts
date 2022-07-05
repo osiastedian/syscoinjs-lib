@@ -4,8 +4,7 @@ export interface NotaryDetails {
   hdrequired: boolean
 }
 
-export interface NotaryAsset {
+export interface NotaryAsset extends Record<string, any> {
   notarydone: boolean
   notarydetails: NotaryDetails
-  [key: string]: any // account for any other properties
 }
