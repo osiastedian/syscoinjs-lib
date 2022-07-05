@@ -1,4 +1,4 @@
 export interface PsbtJson {
-  psbt: string;
-  assets: string;
+  psbt: string
+  assets: string
 }
