@@ -1,15 +1,15 @@
 export interface AuxFeeDetails {
-  auxFeeKeyID: string;
-  auxFees: AuxFee[];
+  auxFeeKeyID: string
+  auxFees: AuxFee[]
 }
 
 export interface AuxFee {
-  bound: number;
-  percent: number;
+  bound: number
+  percent: number
 }
 
 export interface SanitizedAuxFeeDetails {
-  auxfeekeyid: Buffer;
-  auxfees: AuxFee[];
-  auxfeeaddress?: string;
+  auxfeekeyid: Buffer
+  auxfees: AuxFee[]
+  auxfeeaddress?: string
 }
