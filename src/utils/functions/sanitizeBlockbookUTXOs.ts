@@ -26,15 +26,19 @@ interface TxOptions {
  */
 export async function sanitizeBlockbookUTXOs(
   sysFromXpubOrAddress: string,
-  utxoObj: UtxoObject,
-  network?: Network,
-  txOpts?: TxOptions,
+  utxoObjValue: UtxoObject,
+  networkValue?: Network,
+  txOptsValue?: TxOptions,
   assetMap?: Map<
     string,
     { changeAddress?: string; outputs: [{ value: BN; address: string }] }
   >,
   excludeZeroConf?: boolean
 ): Promise<SanitizedUtxoObject> {
+  let network = networkValue
+  const utxoObj = utxoObjValue
+  let txOpts = txOptsValue
+
   if (!txOpts) {
     txOpts = { rbf: false }
   }
@@ -44,7 +48,8 @@ export async function sanitizeBlockbookUTXOs(
   }
   if (utxoObj.assets) {
     sanitizedUtxos.assets = new Map()
-    utxoObj.assets.forEach((asset) => {
+    utxoObj.assets.forEach((assetValue) => {
+      const asset = assetValue
       const assetObj: Partial<SanitiziedUtxoAsset> = {}
       if (asset.contract) {
         asset.contract = asset.contract.replace(/^0x/, '')
@@ -117,7 +122,8 @@ export async function sanitizeBlockbookUTXOs(
     })
   }
   if (utxoObj.utxos) {
-    utxoObj.utxos.forEach((utxo) => {
+    utxoObj.utxos.forEach((utxoValue) => {
+      const utxo = utxoValue
       // xpub queries will return utxo.address and address queries should use sysFromXpubOrAddress as address is not provided
       utxo.address = utxo.address || sysFromXpubOrAddress
       if (excludeZeroConf && utxo.confirmations <= 0) {
