@@ -21,6 +21,9 @@ export interface UtxoAsset {
   auxFeeDetails: AuxFeeDetails
 }
 
+/**
+ * Refer to https://github.com/trezor/blockbook/blob/master/docs/api.md#get-utxo
+ */
 export interface UTXO {
   txid: string
   vout: number
@@ -30,6 +33,8 @@ export interface UTXO {
   assetInfo: UtxoAssetInfo
   confirmations: number
   locktime: number
+  height: number
+  coinbase: boolean
 }
 
 export interface UtxoAssetInfo {

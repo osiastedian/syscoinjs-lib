@@ -7,7 +7,7 @@ import { AssetAllocation } from '../../types/asset-allocation'
  * @param tx Required. bitcoinjs transaction
  * @returns allocation information
  */
-export function getAllocationsFromTx(tx: bjs.Transaction): AssetAllocation {
+export function getAllocationsFromTx(tx: bjs.Transaction): AssetAllocation[] {
   return syscointx.getAllocationsFromTx(tx) || []
 }
 
