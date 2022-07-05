@@ -1,5 +1,4 @@
-import bjs, { Network } from 'bitcoinjs-lib';
-import { Psbt } from 'bitcoinjs-lib';
+import bjs, { Network, Psbt } from 'bitcoinjs-lib'
 
 export function copyPSBT(
   psbt: Psbt,
@@ -7,12 +6,12 @@ export function copyPSBT(
   outputIndexToModify: number,
   outputScript: Buffer | string
 ): Psbt {
-  const psbtNew = new bjs.Psbt({ network: networkIn });
-  psbtNew.setVersion(psbt.version);
-  const txInputs = psbt.txInputs;
+  const psbtNew = new bjs.Psbt({ network: networkIn })
+  psbtNew.setVersion(psbt.version)
+  const { txInputs } = psbt
   for (let i = 0; i < txInputs.length; i++) {
-    const input = txInputs[i];
-    const dataInput = psbt.data.inputs[i];
+    const input = txInputs[i]
+    const dataInput = psbt.data.inputs[i]
     const inputObj = {
       hash: input.hash,
       index: input.index,
@@ -20,31 +19,31 @@ export function copyPSBT(
       bip32Derivation: dataInput.bip32Derivation || [],
       witnessUtxo: null,
       nonWitnessUtxo: null,
-    };
-    if (dataInput.nonWitnessUtxo) {
-      inputObj.nonWitnessUtxo = dataInput.nonWitnessUtxo;
-    } else if (dataInput.witnessUtxo) {
-      inputObj.witnessUtxo = dataInput.witnessUtxo;
     }
-    psbtNew.addInput(inputObj);
+    if (dataInput.nonWitnessUtxo) {
+      inputObj.nonWitnessUtxo = dataInput.nonWitnessUtxo
+    } else if (dataInput.witnessUtxo) {
+      inputObj.witnessUtxo = dataInput.witnessUtxo
+    }
+    psbtNew.addInput(inputObj)
     dataInput.unknownKeyVals.forEach((unknownKeyVal) => {
-      psbtNew.addUnknownKeyValToInput(i, unknownKeyVal);
-    });
+      psbtNew.addUnknownKeyValToInput(i, unknownKeyVal)
+    })
   }
-  const txOutputs = psbt.txOutputs;
+  const { txOutputs } = psbt
   for (let i = 0; i < txOutputs.length; i++) {
-    const output = txOutputs[i];
+    const output = txOutputs[i]
     if (i === outputIndexToModify) {
       psbtNew.addOutput({
         script: outputScript as Buffer,
         address: outputScript as string,
         value: output.value,
-      });
+      })
     } else {
-      psbtNew.addOutput(output);
+      psbtNew.addOutput(output)
     }
   }
-  return psbtNew;
+  return psbtNew
 }
 
-export default copyPSBT;
+export default copyPSBT

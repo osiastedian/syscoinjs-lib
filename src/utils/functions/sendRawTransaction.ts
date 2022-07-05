@@ -1,6 +1,6 @@
-import fetchBackendAccount from "./fetchBackendAccount"
-import axios from "axios"
-import Signer from "../Signer"
+import axios from 'axios'
+import fetchBackendAccount from './fetchBackendAccount'
+import Signer from '../Signer'
 
 /**
  * Purpose: Send raw transaction to backend Blockbook provider to send to the network
@@ -9,23 +9,33 @@ import Signer from "../Signer"
  * @param mySignerObj Optional. Signer object if you wish to update change/receiving indexes from backend provider through fetchBackendAccount()
  * @returns Returns txid in response or error
  */
-export async function sendRawTransaction (backendURL: string, txHex: string, mySignerObj?: Signer): Promise<string> {
-    try {
-      let blockbookURL = backendURL.slice()
-      if (blockbookURL) {
-        blockbookURL = blockbookURL.replace(/\/$/, '')
-      }
-      const request = await axios.post(blockbookURL + '/api/v2/sendtx/', txHex)
-      if (request && request.data) {
-        if (mySignerObj) {
-          await fetchBackendAccount(blockbookURL, mySignerObj.getAccountXpub(), 'tokens=used&details=tokens', true, mySignerObj)
-        }
-        return request.data
-      }
-      return null
-    } catch (e) {
-      return e
+export async function sendRawTransaction(
+  backendURL: string,
+  txHex: string,
+  mySignerObj?: Signer
+): Promise<string> {
+  try {
+    let blockbookURL = backendURL.slice()
+    if (blockbookURL) {
+      blockbookURL = blockbookURL.replace(/\/$/, '')
     }
+    const request = await axios.post(`${blockbookURL}/api/v2/sendtx/`, txHex)
+    if (request && request.data) {
+      if (mySignerObj) {
+        await fetchBackendAccount(
+          blockbookURL,
+          mySignerObj.getAccountXpub(),
+          'tokens=used&details=tokens',
+          true,
+          mySignerObj
+        )
+      }
+      return request.data
+    }
+    return null
+  } catch (e) {
+    return e
   }
-  
-  export default sendRawTransaction;
+}
+
+export default sendRawTransaction

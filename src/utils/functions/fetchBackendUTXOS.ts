@@ -1,15 +1,15 @@
-import axios from 'axios';
+import axios from 'axios'
 
 /**
  * Refer to https://github.com/trezor/blockbook/blob/master/docs/api.md#get-utxo
  */
 interface UTXO {
-  txid:          string;
-  vout:          number;
-  value:         string;
-  height:        number;
-  confirmations: number;
-  coinbase:      boolean;
+  txid: string
+  vout: number
+  value: string
+  height: number
+  confirmations: number
+  coinbase: boolean
 }
 
 /**
@@ -25,23 +25,23 @@ export async function fetchBackendUTXOS(
   options?: string
 ): Promise<UTXO[]> {
   try {
-    let blockbookURL = backendURL.slice();
+    let blockbookURL = backendURL.slice()
     if (blockbookURL) {
-      blockbookURL = blockbookURL.replace(/\/$/, '');
+      blockbookURL = blockbookURL.replace(/\/$/, '')
     }
-    let url = blockbookURL + '/api/v2/utxo/' + addressOrXpub;
+    let url = `${blockbookURL}/api/v2/utxo/${addressOrXpub}`
     if (options) {
-      url += '?' + options;
+      url += `?${options}`
     }
-    const request = await axios.get(url);
+    const request = await axios.get(url)
     if (request && request.data) {
-      request.data.addressOrXpub = addressOrXpub;
-      return request.data;
+      request.data.addressOrXpub = addressOrXpub
+      return request.data
     }
-    return null;
+    return null
   } catch (e) {
-    return e;
+    return e
   }
 }
 
-export default fetchBackendUTXOS;
+export default fetchBackendUTXOS
