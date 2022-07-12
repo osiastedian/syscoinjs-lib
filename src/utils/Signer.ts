@@ -118,7 +118,7 @@ export class Signer {
    * @param skipIncrement Optional. If we should not count the internal receiving index counter (if you want to get the same address in the future)
    * @returns address used for receiving outputs
    */
-  async getNewReceivingAddress(skipIncrement: number): Promise<string | null> {
+  async getNewReceivingAddress(skipIncrement?: number): Promise<string | null> {
     if (this.receivingIndex === -1 && this.blockbookURL) {
       let res = await fetchBackendAccount(
         this.blockbookURL,

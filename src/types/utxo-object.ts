@@ -53,26 +53,19 @@ export interface UtxoObject {
   assets: UtxoAsset[]
 }
 
-export interface SanitizedUtxoObject {
-  utxos: UTXO[]
-  assets?: Map<string, NotaryAsset>
-}
-
-export interface SanitizedNotaryDetails {
-  endpoint: Buffer
-  instanttransfers: number
-  hdrequired: number
-}
-
-export interface SanitiziedUtxoAsset {
-  contract: Buffer
+export interface SanitiziedUtxoAsset extends NotaryAsset {
+  contract?: Buffer
   pubdata: Buffer
   notarykeyid: Buffer
   notaryaddress: string
   notarysig: Buffer
-  notarydetails: SanitizedNotaryDetails
   auxfeedetails: SanitizedAuxFeeDetails
   updatecapabilityflags: number
   maxsupply: BN
   precision: number
+}
+
+export interface SanitizedUtxoObject {
+  utxos: UTXO[]
+  assets?: Map<string, SanitiziedUtxoAsset>
 }

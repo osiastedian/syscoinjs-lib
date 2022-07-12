@@ -1,5 +1,7 @@
 import bjs, { Network } from 'bitcoinjs-lib'
 import BN from 'bn.js'
+import AssetMap from '../../types/asset-map'
+import TxOptions from '../../types/tx-options'
 import {
   SanitizedUtxoObject,
   SanitiziedUtxoAsset,
@@ -8,16 +10,6 @@ import {
 } from '../../types/utxo-object'
 import { syscoinNetworks } from '../constants'
 import getBaseAssetID from './getBaseAssetID'
-
-export interface SanitizeUTXOTxOptions {
-  rbf: boolean
-  assetWhiteList?: Map<string, Object>
-}
-
-export type AssetMap = Map<
-  string,
-  { changeAddress?: string; outputs: [{ value: BN; address: string }] }
->
 
 /**
  * Sanitize backend provider UTXO objects to be useful for this library
@@ -33,7 +25,7 @@ export function sanitizeBlockbookUTXOs(
   sysFromXpubOrAddress: string,
   utxoObjValue: UtxoObject | UTXO[],
   networkValue?: Network,
-  txOptsValue?: SanitizeUTXOTxOptions,
+  txOptsValue?: TxOptions,
   assetMap?: AssetMap,
   excludeZeroConf?: boolean
 ): SanitizedUtxoObject {
@@ -52,7 +44,7 @@ export function sanitizeBlockbookUTXOs(
     sanitizedUtxos.assets = new Map()
     utxoObj.assets.forEach((assetValue) => {
       const asset = assetValue
-      const assetObj: Partial<SanitiziedUtxoAsset> = {}
+      const assetObj = {} as SanitiziedUtxoAsset
       if (asset.contract) {
         asset.contract = asset.contract.replace(/^0x/, '')
         assetObj.contract = Buffer.from(asset.contract, 'hex')
