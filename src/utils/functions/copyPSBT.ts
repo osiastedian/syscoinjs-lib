@@ -4,7 +4,7 @@ export function copyPSBT(
   psbt: Psbt,
   networkIn: Network,
   outputIndexToModify: number,
-  outputScript: Buffer | string
+  outputScript?: Buffer | string
 ): Psbt {
   const psbtNew = new bjs.Psbt({ network: networkIn })
   psbtNew.setVersion(psbt.version)

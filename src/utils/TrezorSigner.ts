@@ -6,7 +6,7 @@ import utxoLib from '@trezor/utxo-lib'
 import bitcoinops from 'bitcoin-ops/map'
 import { PubTypes } from '../types/pubtype'
 import { Networks } from '../types/network'
-import { Signer } from '.'
+import { Signer } from './Signer'
 import {
   bitcoinZPubTypes,
   DEFAULT_TREZOR_DOMAIN,

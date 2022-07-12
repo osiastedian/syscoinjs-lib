@@ -9,10 +9,15 @@ import {
 import { syscoinNetworks } from '../constants'
 import getBaseAssetID from './getBaseAssetID'
 
-interface TxOptions {
+export interface SanitizeUTXOTxOptions {
   rbf: boolean
   assetWhiteList?: Map<string, Object>
 }
+
+export type AssetMap = Map<
+  string,
+  { changeAddress?: string; outputs: [{ value: BN; address: string }] }
+>
 
 /**
  * Sanitize backend provider UTXO objects to be useful for this library
@@ -24,19 +29,16 @@ interface TxOptions {
  * @param excludeZeroConf Optional. False by default. Filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
  * @returns sanitized UTXO object for use internally in this library
  */
-export async function sanitizeBlockbookUTXOs(
+export function sanitizeBlockbookUTXOs(
   sysFromXpubOrAddress: string,
-  utxoObjValue: UtxoObject,
+  utxoObjValue: UtxoObject | UTXO[],
   networkValue?: Network,
-  txOptsValue?: TxOptions,
-  assetMap?: Map<
-    string,
-    { changeAddress?: string; outputs: [{ value: BN; address: string }] }
-  >,
+  txOptsValue?: SanitizeUTXOTxOptions,
+  assetMap?: AssetMap,
   excludeZeroConf?: boolean
-): Promise<SanitizedUtxoObject> {
+): SanitizedUtxoObject {
   let network = networkValue
-  const utxoObj = utxoObjValue
+  const utxoObj = utxoObjValue as UtxoObject
   let txOpts = txOptsValue
 
   if (!txOpts) {

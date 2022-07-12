@@ -8,7 +8,7 @@ Param Signer: Optional. If you want to manage XPUB keys with this package you wo
 Param blockbookURL: Optional. A backend blockbook URL that will provide UTXO and required information to sign. User can always provide their own list of UTXO's in the same format as blockbook using utils.sanitizeBlockbookUTXOs to sanitize the UTXO data to acceptable internal format
 Param network: Optional. The blockchain network and bip32 settings. The utils file has some examples including Bitcoin and Syscoin, it will default to Syscoin.
 */
-function Syscoin (SignerIn, blockbookURL, network) {
+function Syscoin(SignerIn, blockbookURL, network) {
   this.blockbookURL = blockbookURL
   if (SignerIn) {
     this.Signer = SignerIn
@@ -22,7 +22,12 @@ function Syscoin (SignerIn, blockbookURL, network) {
 }
 
 // proxy to signAndSend
-Syscoin.prototype.signAndSendWithSigner = async function (psbt, SignerIn, notaryAssets, pathIn) {
+Syscoin.prototype.signAndSendWithSigner = async function (
+  psbt,
+  SignerIn,
+  notaryAssets,
+  pathIn
+) {
   return this.signAndSend(psbt, notaryAssets, SignerIn, pathIn)
 }
 /* createPSBTFromRes
@@ -34,7 +39,10 @@ Param redeemOrWitness: Optional. redeemScript for P2SH and witnessScript for P2W
   Field path. Optional. The HD bip32 path of how the Signer can sign inputs inside of script
 Returns: psbt from bitcoinjs-lib
 */
-Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript) {
+Syscoin.prototype.createPSBTFromRes = async function (
+  res,
+  redeemOrWitnessScript
+) {
   const psbt = new utils.bitcoinjs.Psbt({ network: this.network })
   const prevTx = new Map()
   psbt.setVersion(res.txVersion)
@@ -44,7 +52,7 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
       hash: input.txId,
       index: input.vout,
       sequence: input.sequence,
-      bip32Derivation: []
+      bip32Derivation: [],
     }
     // if legacy address type get previous tx as required by bitcoinjs-lib to sign without witness
     // Note: input.address is only returned by Blockbook XPUB UTXO API and not address UTXO API and this address is used to assign type
@@ -52,37 +60,54 @@ Syscoin.prototype.createPSBTFromRes = async function (res, redeemOrWitnessScript
       if (prevTx.has(input.txId)) {
         inputObj.nonWitnessUtxo = prevTx.get(input.txId)
       } else {
-        const hexTx = await utils.fetchBackendRawTx(this.blockbookURL, input.txId)
+        const hexTx = await utils.fetchBackendRawTx(
+          this.blockbookURL,
+          input.txId
+        )
         if (hexTx) {
           const bufferTx = Buffer.from(hexTx.hex, 'hex')
           prevTx.set(input.txId, bufferTx)
           inputObj.nonWitnessUtxo = bufferTx
         } else {
-          console.log('Could not fetch input transaction for legacy UTXO: ' + input.txId)
+          console.log(
+            'Could not fetch input transaction for legacy UTXO: ' + input.txId
+          )
         }
         if (redeemOrWitnessScript) {
           inputObj.redeemScript = redeemOrWitnessScript
         }
       }
     } else {
-      inputObj.witnessUtxo = { script: utils.bitcoinjs.address.toOutputScript(input.address, this.network), value: input.value.toNumber() }
+      inputObj.witnessUtxo = {
+        script: utils.bitcoinjs.address.toOutputScript(
+          input.address,
+          this.network
+        ),
+        value: input.value.toNumber(),
+      }
       if (redeemOrWitnessScript) {
         inputObj.witnessScript = redeemOrWitnessScript
       }
     }
     psbt.addInput(inputObj)
     if (input.address) {
-      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('address'), value: Buffer.from(input.address) })
+      psbt.addUnknownKeyValToInput(i, {
+        key: Buffer.from('address'),
+        value: Buffer.from(input.address),
+      })
     }
     if (input.path) {
-      psbt.addUnknownKeyValToInput(i, { key: Buffer.from('path'), value: Buffer.from(input.path) })
+      psbt.addUnknownKeyValToInput(i, {
+        key: Buffer.from('path'),
+        value: Buffer.from(input.path),
+      })
     }
   }
-  res.outputs.forEach(output => {
+  res.outputs.forEach((output) => {
     psbt.addOutput({
       script: output.script,
       address: output.script ? null : output.address,
-      value: output.value.toNumber()
+      value: output.value.toNumber(),
     })
   })
   return psbt
@@ -94,7 +119,12 @@ Param notaryAssets: Optional. Asset objects that are required for notarization, 
 Param SignerIn: Optional. Signer used to sign transaction
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn, pathIn) {
+Syscoin.prototype.signAndSend = async function (
+  psbt,
+  notaryAssets,
+  SignerIn,
+  pathIn
+) {
   // notarize if necessary
   const Signer = SignerIn || this.Signer
   const psbtClone = psbt.clone()
@@ -115,16 +145,28 @@ Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn, pa
     let needNotary = false
     for (let i = 0; i < allocations.length; i++) {
       // if notarySignature exists and is an empty signature (default prior to filling) then we need to notarize this asset allocation send
-      if (allocations[i].notarysig && allocations[i].notarysig.length > 0 && allocations[i].notarysig.equals(emptySig)) {
+      if (
+        allocations[i].notarysig &&
+        allocations[i].notarysig.length > 0 &&
+        allocations[i].notarysig.equals(emptySig)
+      ) {
         needNotary = true
         break
       }
     }
     // if notarization is required
     if (needNotary) {
-      const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+      const notarizedDetails = await utils.notarizePSBT(
+        psbt,
+        notaryAssets,
+        psbt.extractTransaction().toHex()
+      )
       if (notarizedDetails && notarizedDetails.output) {
-        psbt = utils.copyPSBT(psbtClone, notarizedDetails.index, notarizedDetails.output)
+        psbt = utils.copyPSBT(
+          psbtClone,
+          notarizedDetails.index,
+          notarizedDetails.output
+        )
         psbt = await Signer.sign(psbt, pathIn)
         try {
           // will fail if not complete
@@ -139,7 +181,11 @@ Syscoin.prototype.signAndSend = async function (psbt, notaryAssets, SignerIn, pa
     }
   }
   if (this.blockbookURL) {
-    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex(), Signer)
+    const resSend = await utils.sendRawTransaction(
+      this.blockbookURL,
+      psbt.extractTransaction().toHex(),
+      Signer
+    )
     if (resSend.error) {
       throw Object.assign(
         new Error('could not send tx! error: ' + resSend.error.message),
@@ -165,7 +211,11 @@ Param wif: Required. Private key in WIF format to sign inputs of the transaction
 Param notaryAssets: Optional. Asset objects that are required for notarization, fetch signatures via fetchNotarizationFromEndPoint()
 Returns: PSBT signed success or unsigned if failure
 */
-Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) {
+Syscoin.prototype.signAndSendWithWIF = async function (
+  psbt,
+  wif,
+  notaryAssets
+) {
   // notarize if necessary
   const psbtClone = psbt.clone()
   psbt = await utils.signWithWIF(psbt, wif, this.network)
@@ -184,16 +234,29 @@ Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) 
     let needNotary = false
     for (let i = 0; i < allocations.length; i++) {
       // if notarySignature exists and is an empty signature (default prior to filling) then we need to notarize this asset allocation send
-      if (allocations[i].notarysig && allocations[i].notarysig.length > 0 && allocations[i].notarysig.equals(emptySig)) {
+      if (
+        allocations[i].notarysig &&
+        allocations[i].notarysig.length > 0 &&
+        allocations[i].notarysig.equals(emptySig)
+      ) {
         needNotary = true
         break
       }
     }
     // if notarization is required
     if (needNotary) {
-      const notarizedDetails = await utils.notarizePSBT(psbt, notaryAssets, psbt.extractTransaction().toHex())
+      const notarizedDetails = await utils.notarizePSBT(
+        psbt,
+        notaryAssets,
+        psbt.extractTransaction().toHex()
+      )
       if (notarizedDetails && notarizedDetails.output) {
-        psbt = utils.copyPSBT(psbtClone, this.network, notarizedDetails.index, notarizedDetails.output)
+        psbt = utils.copyPSBT(
+          psbtClone,
+          this.network,
+          notarizedDetails.index,
+          notarizedDetails.output
+        )
         psbt = await utils.signWithWIF(psbt, wif, this.network)
         try {
           // will fail if not complete
@@ -207,7 +270,10 @@ Syscoin.prototype.signAndSendWithWIF = async function (psbt, wif, notaryAssets) 
     }
   }
   if (this.blockbookURL) {
-    const resSend = await utils.sendRawTransaction(this.blockbookURL, psbt.extractTransaction().toHex())
+    const resSend = await utils.sendRawTransaction(
+      this.blockbookURL,
+      psbt.extractTransaction().toHex()
+    )
     if (resSend.error) {
       throw Object.assign(
         new Error('could not send tx! error: ' + resSend.error.message),
@@ -248,7 +314,13 @@ Param assetMap: Optional (For asset transactions only). Description of Map:
 Param excludeZeroConf: Optional. False by default. Filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
 Returns: Returns JSON object in response, sanitized UTXO object array in JSON
 */
-Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddress, txOpts, assetMap, excludeZeroConf) {
+Syscoin.prototype.fetchAndSanitizeUTXOs = async function (
+  utxos,
+  fromXpubOrAddress,
+  txOpts,
+  assetMap,
+  excludeZeroConf
+) {
   if (!utxos) {
     if (fromXpubOrAddress) {
       if (!Array.isArray(fromXpubOrAddress)) {
@@ -256,19 +328,34 @@ Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddre
       }
       const utxoRequests = []
       const concatSanitizedUTXOS = {}
-      fromXpubOrAddress.forEach(addressOrXpub => utxoRequests.push(utils.fetchBackendUTXOS(this.blockbookURL, addressOrXpub)))
+      fromXpubOrAddress.forEach((addressOrXpub) =>
+        utxoRequests.push(
+          utils.fetchBackendUTXOS(this.blockbookURL, addressOrXpub)
+        )
+      )
       const responses = await Promise.all(utxoRequests)
-      responses.forEach(response => {
-        const utxos = utils.sanitizeBlockbookUTXOs(response.addressOrXpub, response, this.network, txOpts, assetMap, excludeZeroConf)
+      responses.forEach((response) => {
+        const utxos = utils.sanitizeBlockbookUTXOs(
+          response.addressOrXpub,
+          response,
+          this.network,
+          txOpts,
+          assetMap,
+          excludeZeroConf
+        )
         if (!concatSanitizedUTXOS.utxos) {
           concatSanitizedUTXOS.utxos = utxos.utxos
         } else {
-          concatSanitizedUTXOS.utxos = [...concatSanitizedUTXOS.utxos].concat([...utxos.utxos])
+          concatSanitizedUTXOS.utxos = [...concatSanitizedUTXOS.utxos].concat([
+            ...utxos.utxos,
+          ])
         }
         if (!concatSanitizedUTXOS.assets && utxos.assets) {
           concatSanitizedUTXOS.assets = utxos.assets
         } else if (concatSanitizedUTXOS.assets && utxos.assets) {
-          concatSanitizedUTXOS.assets = new Map([...concatSanitizedUTXOS.assets].concat([...utxos.assets]))
+          concatSanitizedUTXOS.assets = new Map(
+            [...concatSanitizedUTXOS.assets].concat([...utxos.assets])
+          )
         }
       })
       utxos = concatSanitizedUTXOS
@@ -276,11 +363,28 @@ Syscoin.prototype.fetchAndSanitizeUTXOs = async function (utxos, fromXpubOrAddre
         return r.concat(k)
       }, [])
     } else if (this.Signer) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.Signer.getAccountXpub())
-      utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts, assetMap, excludeZeroConf)
+      utxos = await utils.fetchBackendUTXOS(
+        this.blockbookURL,
+        this.Signer.getAccountXpub()
+      )
+      utxos = utils.sanitizeBlockbookUTXOs(
+        fromXpubOrAddress,
+        utxos,
+        this.network,
+        txOpts,
+        assetMap,
+        excludeZeroConf
+      )
     }
   } else {
-    utxos = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, utxos, this.network, txOpts, assetMap, excludeZeroConf)
+    utxos = utils.sanitizeBlockbookUTXOs(
+      fromXpubOrAddress,
+      utxos,
+      this.network,
+      txOpts,
+      assetMap,
+      excludeZeroConf
+    )
   }
   return utxos
 }
@@ -299,7 +403,16 @@ Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript f
 Param inputsArr: Optional. Force these inputs to be included in the transaction, not to be confused with 'utxos' which is optional inputs that *may* be included as part of the funding process.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, outputsArr, feeRate, fromXpubOrAddress, utxos, redeemOrWitnessScript, inputsArr) {
+Syscoin.prototype.createTransaction = async function (
+  txOpts,
+  changeAddress,
+  outputsArr,
+  feeRate,
+  fromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript,
+  inputsArr
+) {
   if (this.Signer) {
     if (!changeAddress) {
       changeAddress = await this.Signer.getNewChangeAddress()
@@ -307,14 +420,33 @@ Syscoin.prototype.createTransaction = async function (txOpts, changeAddress, out
   }
   utxos = await this.fetchAndSanitizeUTXOs(utxos, fromXpubOrAddress, txOpts)
   if (inputsArr) {
-    inputsArr = utils.sanitizeBlockbookUTXOs(fromXpubOrAddress, inputsArr, this.network, txOpts).utxos
+    inputsArr = utils.sanitizeBlockbookUTXOs(
+      fromXpubOrAddress,
+      inputsArr,
+      this.network,
+      txOpts
+    ).utxos
   }
-  const res = syscointx.createTransaction(txOpts, utxos, changeAddress, outputsArr, feeRate, inputsArr)
+  const res = syscointx.createTransaction(
+    txOpts,
+    utxos,
+    changeAddress,
+    outputsArr,
+    feeRate,
+    inputsArr
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (fromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* assetNew
@@ -356,7 +488,16 @@ Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress, sysReceivingAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetNew = async function (
+  assetOpts,
+  txOpts,
+  sysChangeAddress,
+  sysReceivingAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -367,16 +508,42 @@ Syscoin.prototype.assetNew = async function (assetOpts, txOpts, sysChangeAddress
   }
   // create dummy map where GUID will be replaced by deterministic one based on first input txid, we need this so fees will be accurately determined on first place of coinselect
   const assetMap = new Map([
-    ['0', { changeAddress: sysChangeAddress, outputs: [{ value: new BN(0), address: sysReceivingAddress }] }]
+    [
+      '0',
+      {
+        changeAddress: sysChangeAddress,
+        outputs: [{ value: new BN(0), address: sysReceivingAddress }],
+      },
+    ],
   ])
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
-  const res = syscointx.assetNew(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    true
+  )
+  const res = syscointx.assetNew(
+    assetOpts,
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* assetUpdate
@@ -427,12 +594,28 @@ Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetUpdate = async function (
+  assetGuid,
+  assetOpts,
+  txOpts,
+  assetMap,
+  sysChangeAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (!utxos) {
     if (sysFromXpubOrAddress || !this.Signer) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, sysFromXpubOrAddress)
+      utxos = await utils.fetchBackendUTXOS(
+        this.blockbookURL,
+        sysFromXpubOrAddress
+      )
     } else if (this.Signer) {
-      utxos = await utils.fetchBackendUTXOS(this.blockbookURL, this.Signer.getAccountXpub())
+      utxos = await utils.fetchBackendUTXOS(
+        this.blockbookURL,
+        this.Signer.getAccountXpub()
+      )
     }
   }
   if (this.Signer) {
@@ -446,13 +629,34 @@ Syscoin.prototype.assetUpdate = async function (assetGuid, assetOpts, txOpts, as
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
-  const res = syscointx.assetUpdate(assetGuid, assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    true
+  )
+  const res = syscointx.assetUpdate(
+    assetGuid,
+    assetOpts,
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* assetSend
@@ -479,7 +683,15 @@ Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetSend = async function (
+  txOpts,
+  assetMapIn,
+  sysChangeAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -494,12 +706,14 @@ Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddre
     if (baseAssetID !== assetGuid) {
       // likely NFT issuance only with no base value asset issued, create new base value object so assetSend can perform proof of ownership
       if (!assetMapIn.has(baseAssetID)) {
-        const valueBaseAssetObj = { outputs: [{ address: sysChangeAddress, value: BN_ZERO }] }
+        const valueBaseAssetObj = {
+          outputs: [{ address: sysChangeAddress, value: BN_ZERO }],
+        }
         valueBaseAssetObj.changeAddress = sysChangeAddress
         assetMap.set(baseAssetID, valueBaseAssetObj)
       }
       assetMap.set(assetGuid, valueAssetObj)
-    // regular FT
+      // regular FT
     } else {
       valueAssetObj.outputs.push({ address: sysChangeAddress, value: BN_ZERO })
       valueAssetObj.changeAddress = sysChangeAddress
@@ -514,13 +728,32 @@ Syscoin.prototype.assetSend = async function (txOpts, assetMapIn, sysChangeAddre
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, true)
-  const res = syscointx.assetSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    true
+  )
+  const res = syscointx.assetSend(
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* assetAllocationSend
@@ -550,7 +783,15 @@ Param res: Required. The resulting object passed in which is assigned from sysco
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetAllocationSend = async function (
+  txOpts,
+  assetMap,
+  sysChangeAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
@@ -562,13 +803,32 @@ Syscoin.prototype.assetAllocationSend = async function (txOpts, assetMap, sysCha
     }
   }
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.assetAllocationSend(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    false
+  )
+  const res = syscointx.assetAllocationSend(
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* assetAllocationBurn
@@ -596,7 +856,16 @@ Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetAllocationBurn = async function (
+  assetOpts,
+  txOpts,
+  assetMap,
+  sysChangeAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (this.Signer) {
     if (!sysChangeAddress) {
       sysChangeAddress = await this.Signer.getNewChangeAddress()
@@ -608,13 +877,33 @@ Syscoin.prototype.assetAllocationBurn = async function (assetOpts, txOpts, asset
     }
   }
   // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.assetAllocationBurn(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    false
+  )
+  const res = syscointx.assetAllocationBurn(
+    assetOpts,
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* assetAllocationMint
@@ -651,7 +940,16 @@ Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.assetAllocationMint = async function (
+  assetOpts,
+  txOpts,
+  assetMap,
+  sysChangeAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (this.Signer) {
     if (assetMap) {
       for (const valueAssetObj of assetMap.values()) {
@@ -672,12 +970,22 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
     }
     if (sysChangeAddress === changeAddress) {
       throw Object.assign(
-        new Error('Syscoin and asset change address cannot be the same for assetAllocationMint!'),
+        new Error(
+          'Syscoin and asset change address cannot be the same for assetAllocationMint!'
+        ),
         { code: 402 }
       )
     }
     assetMap = new Map([
-      [ethProof.assetguid, { changeAddress: changeAddress, outputs: [{ value: ethProof.amount, address: ethProof.destinationaddress }] }]
+      [
+        ethProof.assetguid,
+        {
+          changeAddress: changeAddress,
+          outputs: [
+            { value: ethProof.amount, address: ethProof.destinationaddress },
+          ],
+        },
+      ],
     ])
     assetOpts = {
       ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),
@@ -688,18 +996,38 @@ Syscoin.prototype.assetAllocationMint = async function (assetOpts, txOpts, asset
       txpath: Buffer.from(ethProof.txpath, 'hex'),
       receiptvalue: Buffer.from(ethProof.receiptvalue, 'hex'),
       receiptroot: Buffer.from(ethProof.receiptroot, 'hex'),
-      receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex')
+      receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex'),
     }
   }
 
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.assetAllocationMint(assetOpts, txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    false
+  )
+  const res = syscointx.assetAllocationMint(
+    assetOpts,
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 /* syscoinBurnToAssetAllocation
@@ -726,7 +1054,15 @@ Param utxos: Optional. Pass in specific utxos to fund a transaction.
 Param redeemOrWitnessScript: Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
 Returns: PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
 */
-Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMap, sysChangeAddress, feeRate, sysFromXpubOrAddress, utxos, redeemOrWitnessScript) {
+Syscoin.prototype.syscoinBurnToAssetAllocation = async function (
+  txOpts,
+  assetMap,
+  sysChangeAddress,
+  feeRate,
+  sysFromXpubOrAddress,
+  utxos,
+  redeemOrWitnessScript
+) {
   if (this.Signer) {
     for (const valueAssetObj of assetMap.values()) {
       if (!valueAssetObj.changeAddress) {
@@ -738,17 +1074,36 @@ Syscoin.prototype.syscoinBurnToAssetAllocation = async function (txOpts, assetMa
     }
   }
   // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
-  utxos = await this.fetchAndSanitizeUTXOs(utxos, sysFromXpubOrAddress, txOpts, assetMap, false)
-  const res = syscointx.syscoinBurnToAssetAllocation(txOpts, utxos, assetMap, sysChangeAddress, feeRate)
+  utxos = await this.fetchAndSanitizeUTXOs(
+    utxos,
+    sysFromXpubOrAddress,
+    txOpts,
+    assetMap,
+    false
+  )
+  const res = syscointx.syscoinBurnToAssetAllocation(
+    txOpts,
+    utxos,
+    assetMap,
+    sysChangeAddress,
+    feeRate
+  )
   const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
   if (sysFromXpubOrAddress || !this.Signer) {
-    return { psbt: psbt, res: psbt, assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets) }
+    return {
+      psbt: psbt,
+      res: psbt,
+      assets: utils.getAssetsRequiringNotarization(psbt, utxos.assets),
+    }
   }
-  return await this.signAndSend(psbt, utils.getAssetsRequiringNotarization(psbt, utxos.assets))
+  return await this.signAndSend(
+    psbt,
+    utils.getAssetsRequiringNotarization(psbt, utxos.assets)
+  )
 }
 
 module.exports = {
   SyscoinJSLib: Syscoin, // Left to be backwards compatible
   syscoin: Syscoin,
-  utils: utils
+  utils: utils,
 }

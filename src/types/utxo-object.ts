@@ -1,5 +1,6 @@
 import BN from 'bn.js'
 import { AuxFeeDetails, SanitizedAuxFeeDetails } from './aux-fee-details'
+import { NotaryAsset } from './notary-details'
 
 export interface UtxoAssetInfo {
   assetGuid: string
@@ -54,7 +55,7 @@ export interface UtxoObject {
 
 export interface SanitizedUtxoObject {
   utxos: UTXO[]
-  assets?: Map<string, Object>
+  assets?: Map<string, NotaryAsset>
 }
 
 export interface SanitizedNotaryDetails {

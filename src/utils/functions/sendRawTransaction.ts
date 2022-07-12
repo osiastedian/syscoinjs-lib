@@ -2,6 +2,19 @@ import axios from 'axios'
 import fetchBackendAccount from './fetchBackendAccount'
 import Signer from '../Signer'
 
+export type SendRawTransactionError = {
+  error?: {
+    message: string
+  }
+}
+
+export type SendRawTransactionSuccess = {
+  result: string
+}
+
+export type SendRawTransactionResponse =
+  | SendRawTransactionError
+  | SendRawTransactionSuccess
 /**
  * Purpose: Send raw transaction to backend Blockbook provider to send to the network
  * @param backendURL Required. Fully qualified URL for blockbook
@@ -13,7 +26,7 @@ export async function sendRawTransaction(
   backendURL: string,
   txHex: string,
   mySignerObj?: Signer
-): Promise<string> {
+): Promise<SendRawTransactionResponse> {
   try {
     let blockbookURL = backendURL.slice()
     if (blockbookURL) {

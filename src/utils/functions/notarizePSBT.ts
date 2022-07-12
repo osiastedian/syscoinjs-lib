@@ -14,7 +14,7 @@ export async function notarizePSBT(
   psbt: Psbt,
   notaryAssets: Map<string, NotaryAsset>,
   rawTx: string
-): Promise<{ output: any; index: number } | boolean> {
+): Promise<{ output: any; index: number } | false> {
   const notarizationDone = await getNotarizationSignatures(notaryAssets, rawTx)
   if (notarizationDone) {
     return syscointx.addNotarizationSignatures(
