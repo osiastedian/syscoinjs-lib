@@ -4,6 +4,7 @@ import BN from 'bn.js'
 import syscointx from 'syscointx-js'
 import { AssetOpts } from './types/asset-information'
 import AssetMap from './types/asset-map'
+import AssetMintOptions from './types/asset-min-options'
 import { BlockbookTransactionBTC } from './types/blockboox-tx'
 import { NotaryAsset } from './types/notary-details'
 import TxOptions from './types/tx-options'
@@ -319,7 +320,7 @@ class Syscoin {
    * Fetch UTXO's for an address or XPUB from backend Blockbook provider and sanitize them for use by upstream libraries
    * @param utxos Optional. Pass in specific utxos to fund a transaction.
    * @param fromXpubOrAddress Optional. If wanting to fund from specific XPUB's or addresses specify this field should be set. Can be an array of XPUB or addresses in combination.
-   * @param txOpts Optional. Transaction options. Fields are described below:
+   * @param txOpts Optional. Transaction options.
    * @param assetMap Optional (For asset transactions only). Description of Map:
    * 
    * ex.
@@ -409,7 +410,7 @@ class Syscoin {
 
   /**
    * Send Syscoin or Bitcoin or like coins.
-   * @param txOpts Optional. Transaction options. Fields are described below:
+   * @param txOpts Optional. Transaction options.
    * @param changeAddressParam Optional. Change address if defined is where change outputs are sent to. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
    * @param outputsArr  Required. Output array defining tuples to which addresses to send coins to and how much
    * @param feeRate Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
@@ -615,6 +616,414 @@ class Syscoin {
       sanitizedUtxos,
       assetMap,
       sysChangeAddressVal,
+      feeRate
+    )
+    const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+    if (sysFromXpubOrAddress || !this.Signer) {
+      return {
+        psbt,
+        res: psbt,
+        assets: utils.getAssetsRequiringNotarization(
+          psbt,
+          sanitizedUtxos.assets
+        ),
+      }
+    }
+    return this.signAndSend(
+      psbt,
+      utils.getAssetsRequiringNotarization(psbt, sanitizedUtxos.assets)
+    )
+  }
+
+  /**
+   * Issue supply by sending it from asset to an address holding an allocation of the asset.
+   * @param txOpts Optional. Transaction options.
+   * @param assetMapIn Asset Change Map
+   * @param sysChangeAddressParam Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+   * @param feeRate Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
+   * @param sysFromXpubOrAddress If wanting to fund from a specific XPUB or address specify this field should be set
+   * @param utxos  Pass in specific utxos to fund a transaction.
+   * @param redeemOrWitnessScript Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+   * @returns PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+   */
+  async function(
+    txOpts: TxOptions | undefined | null,
+    assetMapIn: AssetMap,
+    sysChangeAddressParam?: string,
+    feeRate?: BN,
+    sysFromXpubOrAddress?: string,
+    utxos?: UtxoObject | UTXO[],
+    redeemOrWitnessScript?: Buffer
+  ) {
+    let sysChangeAddress = sysChangeAddressParam
+    if (this.Signer) {
+      if (!sysChangeAddress) {
+        sysChangeAddress = await this.Signer.getNewChangeAddress()
+      }
+    }
+    const BN_ZERO = new BN(0)
+    const assetMap = new Map()
+    // create new map with base ID's setting zero val output in the base asset outputs array
+    // eslint-disable-next-line no-restricted-syntax
+    for (const [assetGuid, valueAssetObj] of assetMapIn.entries()) {
+      const baseAssetID = utils.getBaseAssetID(assetGuid)
+      // if NFT
+      if (baseAssetID !== assetGuid) {
+        // likely NFT issuance only with no base value asset issued, create new base value object so assetSend can perform proof of ownership
+        if (!assetMapIn.has(baseAssetID)) {
+          const valueBaseAssetObj = {
+            outputs: [{ address: sysChangeAddress, value: BN_ZERO }],
+            changeAddress: sysChangeAddress,
+          }
+          assetMap.set(baseAssetID, valueBaseAssetObj)
+        }
+        assetMap.set(assetGuid, valueAssetObj)
+        // regular FT
+      } else {
+        valueAssetObj.outputs.push({
+          address: sysChangeAddress,
+          value: BN_ZERO,
+        })
+        valueAssetObj.changeAddress = sysChangeAddress
+        assetMap.set(assetGuid, valueAssetObj)
+      }
+    }
+    if (this.Signer) {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const valueAssetObj of assetMap.values()) {
+        if (!valueAssetObj.changeAddress) {
+          // eslint-disable-next-line no-await-in-loop
+          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
+        }
+      }
+    }
+    // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+    const santizedUtxos = await this.fetchAndSanitizeUTXOs(
+      utxos,
+      sysFromXpubOrAddress,
+      txOpts,
+      assetMap,
+      true
+    )
+    const res = syscointx.assetSend(
+      txOpts,
+      santizedUtxos,
+      assetMap,
+      sysChangeAddress,
+      feeRate
+    )
+    const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+    if (sysFromXpubOrAddress || !this.Signer) {
+      return {
+        psbt,
+        res: psbt,
+        assets: utils.getAssetsRequiringNotarization(
+          psbt,
+          santizedUtxos.assets
+        ),
+      }
+    }
+    return this.signAndSend(
+      psbt,
+      utils.getAssetsRequiringNotarization(psbt, santizedUtxos.assets)
+    )
+  }
+
+  /**
+   * Send an asset allocations to other users.
+   * @param txOpts Optional. Transaction options.
+   * @param assetMap Asset Change Map
+   * @param sysChangeAddressParam Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+   * @param feeRate Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
+   * @param sysFromXpubOrAddress If wanting to fund from a specific XPUB or address specify this field should be set
+   * @param utxos  Pass in specific utxos to fund a transaction.
+   * @param redeemOrWitnessScript Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+   * @returns PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+   */
+  async assetAllocationSend(
+    txOpts: TxOptions | undefined | null,
+    assetMap: AssetMap,
+    sysChangeAddressParam?: string,
+    feeRate?: BN,
+    sysFromXpubOrAddress?: string,
+    utxos?: UtxoObject | UTXO[],
+    redeemOrWitnessScript?: Buffer
+  ) {
+    let sysChangeAddress = sysChangeAddressParam
+    if (this.Signer) {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const valueAssetObj of assetMap.values()) {
+        if (!valueAssetObj.changeAddress) {
+          // eslint-disable-next-line no-await-in-loop
+          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
+        }
+      }
+      if (!sysChangeAddress) {
+        sysChangeAddress = await this.Signer.getNewChangeAddress()
+      }
+    }
+    // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+    const santizedUtxos = await this.fetchAndSanitizeUTXOs(
+      utxos,
+      sysFromXpubOrAddress,
+      txOpts,
+      assetMap,
+      false
+    )
+    const res = syscointx.assetAllocationSend(
+      txOpts,
+      santizedUtxos,
+      assetMap,
+      sysChangeAddress,
+      feeRate
+    )
+    const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+    if (sysFromXpubOrAddress || !this.Signer) {
+      return {
+        psbt,
+        res: psbt,
+        assets: utils.getAssetsRequiringNotarization(
+          psbt,
+          santizedUtxos.assets
+        ),
+      }
+    }
+    return this.signAndSend(
+      psbt,
+      utils.getAssetsRequiringNotarization(psbt, santizedUtxos.assets)
+    )
+  }
+
+  /**
+   * Burn an asset allocation for purpose of provably burning. Could be used to create proof-of-burn for SysEthereum bridge by specifying the ethaddress as destination in assetOpts.
+   * @param assetOpts Asset options.
+   * @param txOpts Optional. Transaction options.
+   * @param assetMap Asset Change Map
+   * @param sysChangeAddressParam Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+   * @param feeRate Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
+   * @param sysFromXpubOrAddress If wanting to fund from a specific XPUB or address specify this field should be set
+   * @param utxos  Pass in specific utxos to fund a transaction.
+   * @param redeemOrWitnessScript Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+   * @returns PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+   */
+  async assetAllocationBurn(
+    assetOpts: {
+      /**
+       * Optional. If burning for purpose of sending over SysEthereum bridge specify the destination Ethereum address where tokens should be sent to on Ethereum.
+       */
+      ethaddress?: string
+    },
+    txOpts: TxOptions | undefined | null,
+    assetMap: AssetMap,
+    sysChangeAddressParam?: string,
+    feeRate?: BN,
+    sysFromXpubOrAddress?: string,
+    utxos?: UtxoObject | UTXO[],
+    redeemOrWitnessScript?: Buffer
+  ) {
+    let sysChangeAddress = sysChangeAddressParam
+    if (this.Signer) {
+      if (!sysChangeAddress) {
+        sysChangeAddress = await this.Signer.getNewChangeAddress()
+      }
+      // eslint-disable-next-line no-restricted-syntax
+      for (const valueAssetObj of assetMap.values()) {
+        if (!valueAssetObj.changeAddress) {
+          // eslint-disable-next-line no-await-in-loop
+          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
+        }
+      }
+    }
+    // true last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+    const sanitizedUtxos = await this.fetchAndSanitizeUTXOs(
+      utxos,
+      sysFromXpubOrAddress,
+      txOpts,
+      assetMap,
+      false
+    )
+    const res = syscointx.assetAllocationBurn(
+      assetOpts,
+      txOpts,
+      sanitizedUtxos,
+      assetMap,
+      sysChangeAddress,
+      feeRate
+    )
+    const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+    if (sysFromXpubOrAddress || !this.Signer) {
+      return {
+        psbt,
+        res: psbt,
+        assets: utils.getAssetsRequiringNotarization(
+          psbt,
+          sanitizedUtxos.assets
+        ),
+      }
+    }
+    return this.signAndSend(
+      psbt,
+      utils.getAssetsRequiringNotarization(psbt, sanitizedUtxos.assets)
+    )
+  }
+
+  /**
+   * Minting new asset using proof-of-lock on Ethereum as a proof to mint tokens on Syscoin.
+   * @param assetOptsParam Optional. If you have the Ethereum TXID and want to use eth-proof you can just specify the ethtxid and web3url fields
+   * @param txOpts Optional. Transaction options
+   * @param assetMapParam Optional. Auto-filled by eth-proof if it is used (pass ethtxid and web3url in assetOpts).
+   * @param sysChangeAddressParam Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+   * @param feeRate Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
+   * @param sysFromXpubOrAddress Optional. If wanting to fund from a specific XPUB or address specify this field should be set
+   * @param utxos  Pass in specific utxos to fund a transaction.
+   * @param redeemOrWitnessScript Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+   * @returns PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+   */
+  async assetAllocationMint(
+    assetOptsParam: AssetMintOptions,
+    txOpts: TxOptions | undefined | null,
+    assetMapParam: AssetMap,
+    sysChangeAddressParam?: string,
+    feeRate?: BN,
+    sysFromXpubOrAddress?: string,
+    utxos?: UtxoObject | UTXO[],
+    redeemOrWitnessScript?: Buffer
+  ) {
+    let assetMap = assetMapParam
+    let assetOpts = assetOptsParam
+    let sysChangeAddress = sysChangeAddressParam
+    if (this.Signer) {
+      if (assetMap) {
+        // eslint-disable-next-line no-restricted-syntax
+        for (const valueAssetObj of assetMap.values()) {
+          if (!valueAssetObj.changeAddress) {
+            valueAssetObj.changeAddress =
+              // eslint-disable-next-line no-await-in-loop
+              await this.Signer.getNewChangeAddress()
+          }
+        }
+      }
+      if (!sysChangeAddress) {
+        sysChangeAddress = await this.Signer.getNewChangeAddress()
+      }
+    }
+    if (!assetMap) {
+      const ethProof = await utils.buildEthProof(assetOpts)
+      let changeAddress
+      if (this.Signer) {
+        changeAddress = await this.Signer.getNewChangeAddress()
+      }
+      if (sysChangeAddress === changeAddress) {
+        throw Object.assign(
+          new Error(
+            'Syscoin and asset change address cannot be the same for assetAllocationMint!'
+          ),
+          { code: 402 }
+        )
+      }
+      assetMap = new Map([
+        [
+          ethProof.assetguid,
+          {
+            changeAddress,
+            outputs: [
+              { value: ethProof.amount, address: ethProof.destinationaddress },
+            ],
+          },
+        ],
+      ])
+      assetOpts = {
+        ethtxid: Buffer.from(ethProof.ethtxid, 'hex'),
+        blockhash: Buffer.from(ethProof.blockhash, 'hex'),
+        txvalue: Buffer.from(ethProof.txvalue, 'hex'),
+        txroot: Buffer.from(ethProof.txroot, 'hex'),
+        txparentnodes: Buffer.from(ethProof.txparentnodes, 'hex'),
+        txpath: Buffer.from(ethProof.txpath, 'hex'),
+        receiptvalue: Buffer.from(ethProof.receiptvalue, 'hex'),
+        receiptroot: Buffer.from(ethProof.receiptroot, 'hex'),
+        receiptparentnodes: Buffer.from(ethProof.receiptparentnodes, 'hex'),
+      }
+    }
+
+    // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+    const sanitizedUtxos = await this.fetchAndSanitizeUTXOs(
+      utxos,
+      sysFromXpubOrAddress,
+      txOpts,
+      assetMap,
+      false
+    )
+    const res = syscointx.assetAllocationMint(
+      assetOpts,
+      txOpts,
+      sanitizedUtxos,
+      assetMap,
+      sysChangeAddress,
+      feeRate
+    )
+    const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)
+    if (sysFromXpubOrAddress || !this.Signer) {
+      return {
+        psbt,
+        res: psbt,
+        assets: utils.getAssetsRequiringNotarization(
+          psbt,
+          sanitizedUtxos.assets
+        ),
+      }
+    }
+    return this.signAndSend(
+      psbt,
+      utils.getAssetsRequiringNotarization(psbt, sanitizedUtxos.assets)
+    )
+  }
+
+  /**
+   * Burn Syscoin to mint SYSX
+   * @param txOpts Transaction options
+   * @param assetMap Asset Map
+   * @param sysChangeAddressParam Optional. Change address if defined is where Syscoin only change outputs are sent to. Does not apply to asset change outputs which are definable in the assetOpts object. If not defined and Signer is defined then a new change address will be automatically created using the next available change address index in the HD path
+   * @param feeRate Optional. Defaults to 10 satoshi per byte. How many satoshi per byte the network fee should be paid out as.
+   * @param sysFromXpubOrAddress Optional. If wanting to fund from a specific XPUB or address specify this field should be set
+   * @param utxos Optional. Pass in specific utxos to fund a transaction.
+   * @param redeemOrWitnessScript Optional. redeemScript for P2SH and witnessScript for P2WSH spending conditions.
+   * @returns PSBT if if Signer is set or result object which is used to create PSBT and sign/send if xpub/address are passed in to fund transaction
+   */
+  async syscoinBurnToAssetAllocation(
+    txOpts: TxOptions | undefined | null,
+    assetMap: AssetMap,
+    sysChangeAddressParam?: string,
+    feeRate?: BN,
+    sysFromXpubOrAddress?: string,
+    utxos?: UtxoObject | UTXO[],
+    redeemOrWitnessScript?: Buffer
+  ) {
+    let sysChangeAddress = sysChangeAddressParam
+    if (this.Signer) {
+      // eslint-disable-next-line no-restricted-syntax
+      for (const valueAssetObj of assetMap.values()) {
+        if (!valueAssetObj.changeAddress) {
+          // eslint-disable-next-line no-await-in-loop
+          valueAssetObj.changeAddress = await this.Signer.getNewChangeAddress()
+        }
+      }
+      if (!sysChangeAddress) {
+        sysChangeAddress = await this.Signer.getNewChangeAddress()
+      }
+    }
+    // false last param for filtering out 0 conf UTXO, new/update/send asset transactions must use confirmed inputs only as per Syscoin Core mempool policy
+    const sanitizedUtxos = await this.fetchAndSanitizeUTXOs(
+      utxos,
+      sysFromXpubOrAddress,
+      txOpts,
+      assetMap,
+      false
+    )
+    const res = syscointx.syscoinBurnToAssetAllocation(
+      txOpts,
+      sanitizedUtxos,
+      assetMap,
+      sysChangeAddress,
       feeRate
     )
     const psbt = await this.createPSBTFromRes(res, redeemOrWitnessScript)

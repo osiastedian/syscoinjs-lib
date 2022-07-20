@@ -4,20 +4,16 @@ import { encode } from 'eth-util-lite'
 import { Log } from 'eth-object'
 import { ERC20Manager, tokenFreezeFunction } from '../constants'
 import { SPVProof } from '../../types/spv-proof'
+import AssetMintOptions from '../../types/asset-min-options'
 
 const Web3 = require('web3')
-
-interface AssetOptions {
-  web3url: string
-  ethtxid: string
-}
 
 /**
  * Purpose: Build Ethereum SPV proof using eth-proof library
  * @param assetOpts Required. Object containing web3url and ethtxid fields populated
  * @returns Returns JSON object in response, SPV proof object in JSON
  */
-async function buildEthProof(assetOpts: AssetOptions): Promise<SPVProof> {
+async function buildEthProof(assetOpts: AssetMintOptions): Promise<SPVProof> {
   const web3 = new Web3()
   const ethProof = new GetProof(assetOpts.web3url)
   const web3Provider = new Web3(assetOpts.web3url)
